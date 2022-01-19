@@ -1,0 +1,13 @@
+name: build-windows-x64
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        uses: ./.github/actions/build-windows
+        with:
+          platform: x64

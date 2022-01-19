@@ -1,0 +1,24 @@
+name: windows
+description: template used to build for windows
+inputs:
+ platform:
+    required: true
+    type: string
+            
+
+runs:
+    using: "composite"
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+      
+    - name: Vcpkg Integration
+      run: $vcpkg_path = (Join-Path ${env:VCPKG_INSTALLATION_ROOT} vcpkg.exe); &$vcpkg_path integrate install
+      shell: pwsh
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Platform=${{inputs.platform}} /p:Configuration=Release ./Source_Files/AlephOne.sln
+      shell: pwsh

@@ -30,6 +30,7 @@ jobs:
             else {"${Env:Programfiles}\Microsoft Visual Studio\Installer\vswhere.exe"};
             $msbuild_path = &$vswhere_path -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe";
            &$msbuild_path .\Source_Files\AlephOne.Sln /t:"Build" /p:Configuration="Release" /p:Platform=x64; 
+          no_output_timeout: 2h
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows

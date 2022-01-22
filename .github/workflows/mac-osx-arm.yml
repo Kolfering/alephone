@@ -1,0 +1,14 @@
+name: build-mac-osx-arm
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        uses: ./.github/actions/build-mac-osx
+        with:
+          platform: arm
+

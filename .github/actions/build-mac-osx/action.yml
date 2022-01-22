@@ -1,0 +1,24 @@
+name: build-mac-osx
+description: template used to build for mac osx
+inputs:
+ platform:
+    required: true
+    type: string
+            
+
+runs:
+    using: "composite"
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Tools
+      run: brew install nasm automake
+      shell: bash
+    - name: Vcpkg Integration
+      run: $VCPKG_INSTALLATION_ROOT/vcpkg integrate install
+      shell: bash
+    - name: Install Dependencies
+      run: cd $GITHUB_WORKSPACE/vcpkg && ./install-${{inputs.platform}}-osx.sh
+      shell: bash
+    - name: Build
+      run: cd $GITHUB_WORKSPACE/PBProjects && xcodebuild -scheme "Aleph One" TEAM_ID='' DEVELOPMENT_TEAM='' CODE_SIGNING_REQUIRED='NO' CODE_SIGN_IDENTITY='' CODE_SIGN_STYLE='' build
+      shell: bash

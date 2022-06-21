@@ -444,7 +444,8 @@ bool OpenALManager::GenerateSources() {
 		}
 
 		for (int i = 0; i < num_buffers; i++) {
-			audioSource.buffers[i] = { buffers_id[i] };
+            audioSource.buffers[i].buffer_id = buffers_id[i];
+            audioSource.buffers[i].queue_state = false;
 		}
 
 		sources_pool.push(audioSource);

@@ -64,6 +64,8 @@ is_sound_data_disposable(NetworkSpeakerSoundBufferDescriptor* inBuffer) {
 // Calling this invalidates the pointer returned the previous call.
 NetworkSpeakerSoundBufferDescriptor* dequeue_network_speaker_data();
 
+int callback_mic_data(uint8* data, int length);
+
 // Called by sound playback routines to return storage-buffers to the freequeue
 void release_network_speaker_buffer(byte* inBuffer);
 

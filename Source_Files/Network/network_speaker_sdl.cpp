@@ -153,41 +153,42 @@ queue_network_speaker_data(byte* inData, short inLength) {
 
 void
 network_speaker_idle_proc() {
-    if (sSpeakerIsOn && OpenALManager::Get()) {
+    if (OpenALManager::Get()) {
 
+        if (sSpeakerIsOn && (!streamPlayer || !streamPlayer->IsActive())) { //we don't have a player yet or it isn't active anymore
+            streamPlayer = OpenALManager::Get()->PlayStream(callback_mic_data, kSoundDataBufferSize, kNetworkAudioSampleRate, kNetworkAudioIsStereo, kNetworkAudioIs16Bit);
+            streamPlayer->SetFilterable(false);
+        }
+
+        if (!sSpeakerIsOn) {
+            OpenALManager::Get()->RemoveVolumeFilter();
+        }
+    }
+}
+
+
+int callback_mic_data(uint8* data, int length) {
+
+    if (sSpeakerIsOn) {
         auto micData = dequeue_network_speaker_data();
 
         if (!micData && machine_tick_count() - lastFeedTick > timeCloseAudio) {
             sSpeakerIsOn = false;
             micData = &sNoiseBufferDesc;
         }
-        
+
         if (micData) {
-
-            bool newPlayer = !streamPlayer;
-            if (streamPlayer) { //we already have a player
-                streamPlayer->Lock();
-                newPlayer = !streamPlayer->IsActive();
-                if (!newPlayer) { //our player is still running, let's give it more data
-                    streamPlayer->FeedData(micData->mData, micData->mLength);
-                }
-                streamPlayer->Unlock();
-            }
-
-            if (newPlayer) { //we don't have a player yet or it isn't active anymore
-                streamPlayer = OpenALManager::Get()->PlayStream(micData->mData, micData->mLength, kNetworkAudioSampleRate, kNetworkAudioIsStereo, kNetworkAudioIs16Bit);
-                streamPlayer->SetFilterable(false);
-            }
+            memcpy(data, micData->mData, micData->mLength);
 
             if (is_sound_data_disposable(micData)) {
                 release_network_speaker_buffer(micData->mData);
             }
 
-            if (!sSpeakerIsOn) {
-                OpenALManager::Get()->RemoveVolumeFilter();
-            }
+            return micData->mLength;
         }
     }
+
+    return 0;
 }
 
 

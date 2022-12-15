@@ -74,6 +74,8 @@ public:
 	void StopSound(short identifier, short sound_index);
 	void StopAllSounds();
 
+	void UpdateListener();
+
 	inline int16 GetNetmicVolumeAdjustment() {
 		return (parameters.volume_while_speaking);
 	}

@@ -3720,7 +3720,6 @@ InfoTree sound_preferences_tree()
 	root.put_attr("music_db", sound_preferences->music_db);
 	root.put_attr("flags", sound_preferences->flags);
 	root.put_attr("rate", sound_preferences->rate);
-	root.put_attr("samples", sound_preferences->samples);
 	root.put_attr("volume_while_speaking", sound_preferences->volume_while_speaking);
 	root.put_attr("mute_while_transmitting", sound_preferences->mute_while_transmitting);
 	root.put_attr("video_export_volume_db", sound_preferences->video_export_volume_db);
@@ -4710,7 +4709,6 @@ void parse_sound_preferences(InfoTree root, std::string version)
 
 	root.read_attr("flags", sound_preferences->flags);
 	root.read_attr("rate", sound_preferences->rate);
-	root.read_attr("samples", sound_preferences->samples);
 	root.read_attr("volume_while_speaking", sound_preferences->volume_while_speaking);
 	root.read_attr("mute_while_transmitting", sound_preferences->mute_while_transmitting);
 	root.read_attr("video_export_volume_db", sound_preferences->video_export_volume_db);

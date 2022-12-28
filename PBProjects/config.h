@@ -31,9 +31,6 @@
 /* Define to 1 if you have the `asound' library (-lasound). */
 /* #undef HAVE_LIBASOUND */
 
-/* Define to 1 if you have the `mad' library (-lmad). */
-/* #undef HAVE_LIBMAD */
-
 /* Define to 1 if you have the `SDL_image' library (-lSDL_image). */
 #define HAVE_LIBSDL_IMAGE 1
 
@@ -150,9 +147,6 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
-
-/* ${desc_vorbis} enabled */
-/* #undef HAVE_VORBISFILE */
 
 /* Define to 1 if you have the `vsnprintf' function. */
 #define HAVE_VSNPRINTF 1

@@ -30,9 +30,7 @@ AX_ARG_ENABLE([lua], [built-in Lua scripting])
 
 AX_ARG_WITH([sdl_image], [SDL2_image support])
 AX_ARG_WITH([ffmpeg], [FFmpeg playback and film export])
-AX_ARG_WITH([mad], [libmad MP3 playback])
 AX_ARG_WITH([sndfile], [libsndfile audio decoding])
-AX_ARG_WITH([vorbis], [libvorbis Ogg/Vorbis music playback])
 AX_ARG_WITH([smpeg], [SMPEG movie playback])
 AX_ARG_WITH([speex], [Speex net mic playback])
 AX_ARG_WITH([alsa], [ALSA net mic transmission])
@@ -235,14 +233,8 @@ dnl Remove SDL 1 inclusions from ffmpeg (https://trac.ffmpeg.org/ticket/2009)
 FFMPEG_LIBS=`echo "$FFMPEG_LIBS" | sed 's|-lSDL ||' | sed 's|-lSDLmain ||'`
 LIBS=`echo "$LIBS" | sed 's|-lSDL ||' | sed 's|-lSDLmain ||'`
 
-AX_CHECK_FEATURE_LIB([mad], [MAD],
-                     [mad.h], [mad], [mad_stream_init])
-
 AX_CHECK_FEATURE_PKG([sndfile], [SNDFILE],
                      [SNDFILE], [sndfile])
-
-AX_CHECK_FEATURE_PKG([vorbis], [VORBISFILE],
-                     [VORBISFILE], [vorbisfile])
 
 AX_CHECK_FEATURE_LIB([smpeg], [SMPEG],
                      [smpeg/smpeg.h], [smpeg], [SMPEG_new])
@@ -335,9 +327,7 @@ AX_PRINT_SUMMARY([opengl])
 AX_PRINT_SUMMARY([lua])
 AX_PRINT_SUMMARY([sdl_image])
 AX_PRINT_SUMMARY([ffmpeg])
-AX_PRINT_SUMMARY([mad])
 AX_PRINT_SUMMARY([sndfile])
-AX_PRINT_SUMMARY([vorbis])
 AX_PRINT_SUMMARY([smpeg])
 AX_PRINT_SUMMARY([speex])
 AX_PRINT_SUMMARY([alsa])

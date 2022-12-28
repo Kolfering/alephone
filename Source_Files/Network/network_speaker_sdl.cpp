@@ -156,7 +156,7 @@ network_speaker_idle_proc() {
     if (OpenALManager::Get()) {
 
         if (sSpeakerIsOn && (!streamPlayer || !streamPlayer->IsActive())) { //we don't have a player yet or it isn't active anymore
-            streamPlayer = OpenALManager::Get()->PlayStream(callback_mic_data, kSoundDataBufferSize, kNetworkAudioSampleRate, kNetworkAudioIsStereo, kNetworkAudioIs16Bit);
+            streamPlayer = OpenALManager::Get()->PlayStream(callback_mic_data, kSoundDataBufferSize, kNetworkAudioSampleRate, kNetworkAudioIsStereo, _16_bit);
             streamPlayer->SetFilterable(false);
         }
 

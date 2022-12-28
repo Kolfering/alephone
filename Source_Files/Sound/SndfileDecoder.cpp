@@ -95,7 +95,7 @@ int32 SndfileDecoder::Decode(uint8* buffer, int32 max_length)
 {
 	if (!sndfile) return 0;
 
-	return sf_read_short(sndfile, (int16*) buffer, max_length / 2) * 2;
+	return sf_read_float(sndfile, (float*) buffer, max_length / 4) * 4;
 
 }
 

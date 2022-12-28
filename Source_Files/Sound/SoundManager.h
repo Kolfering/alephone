@@ -140,7 +140,7 @@ private:
 	void CalculateSoundVariables(short sound_index, world_location3d* source, SoundVolumes& variables);
 	void CalculateInitialSoundVariables(short sound_index, world_location3d* source, SoundVolumes& variables);
 
-	short sound_source; // 8-bit, 16-bit
+	AudioFormat sound_source; // 8-bit, 16-bit
 	
 	std::unique_ptr<SoundFile> sound_file;
 	SoundMemoryManager* sounds;

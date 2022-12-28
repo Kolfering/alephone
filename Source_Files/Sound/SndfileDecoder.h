@@ -37,10 +37,9 @@ public:
 	void Rewind();
 	void Close();
 
-	bool IsSixteenBit() { return true; }
+	AudioFormat GetAudioFormat() { return _32_float; }
 	bool IsStereo() { return (sfinfo.channels == 2); }
-	bool IsSigned() { return true; }
-	int BytesPerFrame() { return 2 * (IsStereo() ? 2 : 1); }
+	int BytesPerFrame() { return 4 * (IsStereo() ? 2 : 1); }
 	float Rate() { return (float) sfinfo.samplerate; }
 	bool IsLittleEndian() { return PlatformIsLittleEndian(); }
 

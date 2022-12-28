@@ -67,6 +67,10 @@
       },
 	  {
 	      "name":"libsndfile",
+		  "features":[
+            "external-libs",
+			"mpeg"
+         ],
 		  "default-features": false
 	  },
      {

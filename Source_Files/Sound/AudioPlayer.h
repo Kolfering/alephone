@@ -74,6 +74,7 @@ public:
     void AskStop() { stop_signal = true; }
     bool IsActive() const { return is_active; }
     void SetVolume(float volume);
+    float GetVolume() const { return volume; }
     void AskRewind() { rewind_signal = true; }
     virtual short GetIdentifier() const { return NONE; }
     virtual short GetSourceIdentifier() const { return NONE; }
@@ -85,7 +86,6 @@ protected:
     virtual void FillBuffers();
     virtual int GetNextData(uint8* data, int length) = 0;
     virtual bool LoadParametersUpdates() { return false; }
-    int GetCurrentTick() const;
     std::atomic_bool rewind_signal = { false };
     std::atomic_bool filterable = { true };
     std::atomic_bool stop_signal = { false };

@@ -34,7 +34,6 @@ public:
 	virtual int32 Decode(uint8* buffer, int32 max_length) = 0;
 	virtual void Rewind() = 0;
 	virtual void Close() = 0;
-
 	virtual bool IsSixteenBit() = 0;
 	virtual bool IsStereo() = 0;
 	virtual bool IsSigned() = 0;
@@ -45,7 +44,7 @@ public:
 	StreamDecoder() { }
 	virtual ~StreamDecoder() { }
 
-	static StreamDecoder* Get(FileSpecifier &File); // can return 0
+	static std::unique_ptr<StreamDecoder> Get(FileSpecifier &File); // can return 0
 };
 
 class Decoder : public StreamDecoder

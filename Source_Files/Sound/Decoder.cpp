@@ -31,13 +31,13 @@
 
 using std::unique_ptr;
 
-StreamDecoder *StreamDecoder::Get(FileSpecifier& File)
+unique_ptr<StreamDecoder> StreamDecoder::Get(FileSpecifier& File)
 {
 #ifdef HAVE_FFMPEG
 	{
 		unique_ptr<FFmpegDecoder> ffmpegDecoder(new FFmpegDecoder);
 		if (ffmpegDecoder->Open(File))
-			return ffmpegDecoder.release();
+			return ffmpegDecoder;
 	}
 #endif
 
@@ -45,13 +45,13 @@ StreamDecoder *StreamDecoder::Get(FileSpecifier& File)
 	{ 
 		unique_ptr<SndfileDecoder> sndfileDecoder(new SndfileDecoder);
 		if (sndfileDecoder->Open(File))
-			return sndfileDecoder.release();
+			return sndfileDecoder;
 	}
 #else
 	{
 		unique_ptr<BasicIFFDecoder> iffDecoder(new BasicIFFDecoder);
 		if (iffDecoder->Open(File))
-			return iffDecoder.release();
+			return iffDecoder;
 	}
 #endif
 
@@ -59,7 +59,7 @@ StreamDecoder *StreamDecoder::Get(FileSpecifier& File)
 	{
 		unique_ptr<VorbisDecoder> vorbisDecoder(new VorbisDecoder);
 		if (vorbisDecoder->Open(File))
-			return vorbisDecoder.release();
+			return vorbisDecoder;
 	}
 #endif
 
@@ -67,7 +67,7 @@ StreamDecoder *StreamDecoder::Get(FileSpecifier& File)
 	{
 		unique_ptr<MADDecoder> madDecoder(new MADDecoder);
 		if (madDecoder->Open(File))
-			return madDecoder.release();
+			return madDecoder;
 	}
 #endif
 

@@ -54,7 +54,6 @@ struct ffmpeg_vars {
     SDL_ffmpegFile* file;
     SDL_ffmpegAudioFrame* frame;
     AVFifoBuffer *fifo;
-    bool started;
 };
 typedef struct ffmpeg_vars ffmpeg_vars_t;
 
@@ -129,12 +128,8 @@ int32 FFmpegDecoder::Decode(uint8* buffer, int32 max_length)
 
 void FFmpegDecoder::Rewind()
 {
-    if (av->started)
-    {
-        SDL_ffmpegSeekRelative(av->file, 0);
-        av_fifo_reset(av->fifo);
-        av->started = false;
-    }
+    SDL_ffmpegSeekRelative(av->file, 0);
+    av_fifo_reset(av->fifo);
 }
 
 void FFmpegDecoder::Close()
@@ -145,15 +140,12 @@ void FFmpegDecoder::Close()
         SDL_ffmpegFreeAudioFrame(av->frame);
     if (av && av->fifo)
         av_fifo_reset(av->fifo);
-    if (av)
-        av->started = false;
 }
 
 bool FFmpegDecoder::GetAudio()
 {
     if (!SDL_ffmpegGetAudioFrame(av->file, av->frame)) return false;
     av_fifo_generic_write(av->fifo, av->frame->buffer, av->frame->size, NULL);
-    av->started = true;
     return true;
 }
 

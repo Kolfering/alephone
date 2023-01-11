@@ -10,7 +10,7 @@ SoundPlayer::SoundPlayer(const Sound sound, SoundParameters parameters)
 	this->parameters = parameters;
 	data_length = sound.header.length;
 	filterable = parameters.filterable;
-	start_tick = GetCurrentTick();
+	start_tick = SoundManager::GetCurrentAudioTick();
 }
 
 //Simulate what the volume of our sound would be if we play it
@@ -37,6 +37,10 @@ float SoundPlayer::Simulate(const SoundParameters soundParameters) {
 	return volume;
 }
 
+bool SoundPlayer::CanRewindSound(int baseTick) const { 
+	return baseTick + rewind_time < SoundManager::GetCurrentAudioTick(); 
+}
+
 void SoundPlayer::Rewind() {
 	if (OpenALManager::Get()->IsBalanceRewindSound() && !CanRewindSound(start_tick))
 		rewind_signal = false;
@@ -45,7 +49,7 @@ void SoundPlayer::Rewind() {
 		AudioPlayer::Rewind();
 		current_index_data = 0;
 		data_length = sound.Get().header.length;
-		start_tick = GetCurrentTick();
+		start_tick = SoundManager::GetCurrentAudioTick();
 	}
 }
 

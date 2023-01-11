@@ -27,11 +27,11 @@
 
 using std::unique_ptr;
 
-StreamDecoder *StreamDecoder::Get(FileSpecifier& File)
+unique_ptr<StreamDecoder> StreamDecoder::Get(FileSpecifier& File)
 {
 	unique_ptr<SndfileDecoder> sndfileDecoder(std::make_unique<SndfileDecoder>());
 	if (sndfileDecoder->Open(File))
-		return sndfileDecoder.release();
+		return sndfileDecoder;
 
 	return 0;
 }

@@ -71,6 +71,19 @@ void Music::Pause(int index)
 	}
 }
 
+void Music::Close(int index)
+{
+	if (index != NONE) music_slots[index].Close();
+	else
+	{
+		for (auto& slot : music_slots) {
+			slot.Close();
+		}
+
+		music_slots.resize(reserved_music_slots);
+	}
+}
+
 void Music::Fade(float limitVolume, short duration, bool stopOnNoVolume, int index)
 {
 	if (index != NONE) music_slots[index].Fade(limitVolume, duration, stopOnNoVolume);
@@ -201,19 +214,20 @@ void Music::SetClassicLevelMusic(short song_index)
     if (song_index < 0)
         return;
     
-    FileSpecifier file;
-    sprintf(temporary, "Music/%02d.ogg", song_index);
-    file.SetNameWithPath(temporary);
-    if (!file.Exists())
-    {
-        sprintf(temporary, "Music/%02d.mp3", song_index);
-        file.SetNameWithPath(temporary);
-    }
-    if (!file.Exists())
-        return;
-    
-    PushBackLevelMusic(file);
-    marathon_1_song_index = song_index;
+    sprintf_s(temporary, "Music/%02d", song_index);
+	auto files = FileSpecifier::GetFilesWithoutExtensionCare(temporary);
+
+	for (auto&& file : files) {
+
+		auto decoder = StreamDecoder::Get(file);
+
+		if (decoder) {
+			decoder->Close();
+			PushBackLevelMusic(file);
+			marathon_1_song_index = song_index;
+			return;
+		}
+	} 
 }
 
 FileSpecifier* Music::GetLevelMusic()

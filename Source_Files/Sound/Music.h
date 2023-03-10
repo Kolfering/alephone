@@ -53,6 +53,7 @@ public:
 
 	void Fade(float limitVolume, short duration, bool stopOnNoVolume = true, int index = NONE);
 	void Pause(int index = NONE);
+	void Close(int index);
 	bool Playing(int index = NONE);
 	int Load(FileSpecifier& file, bool loop, float volume);
 	void Play(int index) { music_slots[index].Play(); }

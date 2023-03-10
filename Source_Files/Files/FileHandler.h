@@ -252,6 +252,7 @@ public:
 	// Returns whether or not the setting was successful
 	bool SetNameWithPath(const char *NameWithPath);
 	bool SetNameWithPath(const char* NameWithPath, const DirectorySpecifier& Directory);
+	static std::vector<FileSpecifier> FileSpecifier::GetFilesWithoutExtensionCare(const char* NameWithPath, std::vector<FileSpecifier> directories = {});
 
 	void SetTempName(const FileSpecifier& other);
 

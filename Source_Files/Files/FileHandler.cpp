@@ -787,6 +787,31 @@ bool FileSpecifier::SetNameWithPath(const char *NameWithPath)
 	return false;
 }
 
+std::vector<FileSpecifier> FileSpecifier::GetFilesWithoutExtensionCare(const char* NameWithPath, std::vector<FileSpecifier> directories)
+{
+	std::vector<FileSpecifier> matchingFiles;
+	auto fileWithoutExtensionPath = fs::path(NameWithPath);
+	auto fileParentPath = fileWithoutExtensionPath.parent_path();
+	auto&& searchDirectories = directories.empty() ? data_search_path : directories;
+
+	for (auto&& searchDirectory : searchDirectories) {
+		auto path = fs::path(searchDirectory.GetPath()) / fileParentPath;
+
+		FileSpecifier directory(path.string());
+		auto directoryFiles = directory.ReadDirectory();
+
+		for (auto&& file : directoryFiles) {
+			fs::path entryPath = file.name;
+			if (fileWithoutExtensionPath.filename() == entryPath.stem()) {
+				matchingFiles.push_back((path / entryPath).string());
+			}
+		}
+		
+	}
+
+	return matchingFiles;
+}
+
 bool FileSpecifier::SetNameWithPath(const char* NameWithPath, const DirectorySpecifier& Directory) 
 {
 	if (*NameWithPath == '\0') {

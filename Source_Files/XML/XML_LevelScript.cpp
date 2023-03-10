@@ -398,6 +398,18 @@ void GeneralRunScript(int LevelIndex)
 				FileSpecifier MusicFile;
 				if (MusicFile.SetNameWithPath(Cmd.FileSpec.c_str()))
 					Music::instance()->PushBackLevelMusic(MusicFile);
+				else
+				{
+					auto files = FileSpecifier::GetFilesWithoutExtensionCare(Cmd.FileSpec.c_str());
+					for (auto&& file : files) {
+						int musicId = Music::instance()->Load(file, false, 1);
+						if (musicId >= 0) {
+							Music::instance()->Close(musicId);
+							Music::instance()->PushBackLevelMusic(file);
+							break;
+						}
+					}
+				}
 			}
 			break;
 #ifdef HAVE_OPENGL

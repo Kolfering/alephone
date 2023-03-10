@@ -82,21 +82,45 @@ static int Lua_MusicManager_New(lua_State* L)
 
 	std::string search_path = L_Get_Search_Path(L);
 
-	FileSpecifier file;
+	auto inputFile = lua_tostring(L, 1);
+	std::vector<FileSpecifier> matching_files;
 	if (search_path.size())
 	{
-		if (file.SetNameWithPath(lua_tostring(L, 1), search_path)) return 0;
+		FileSpecifier file;
+		if (file.SetNameWithPath(inputFile, search_path))
+		{
+			matching_files.push_back(inputFile);
+		}
+		else
+		{
+			matching_files = FileSpecifier::GetFilesWithoutExtensionCare(inputFile);
+		}
 	}
 	else
 	{
-		if (!file.SetNameWithPath(lua_tostring(L, 1))) return 0;
+		FileSpecifier file;
+		if (file.SetNameWithPath(inputFile)) 
+		{
+			matching_files.push_back(inputFile);
+		}
+		else 
+		{
+			matching_files = FileSpecifier::GetFilesWithoutExtensionCare(inputFile);
+		}
 	}
 
-	int id = Music::instance()->Load(file, loop, volume);
-	if (id < 0) return 0;
+	for (auto&& file : matching_files) {
 
-	Lua_Music::Push(L, id);
-	return 1;
+		int id = Music::instance()->Load(file, loop, volume);
+
+		if (id >= 0)
+		{
+			Lua_Music::Push(L, id);
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 static int Lua_MusicManager_Play(lua_State* L)
@@ -109,16 +133,42 @@ static int Lua_MusicManager_Play(lua_State* L)
 
 		std::string search_path = L_Get_Search_Path(L);
 
-		FileSpecifier file;
+		auto inputFile = lua_tostring(L, 1);
+		std::vector<FileSpecifier> matching_files;
 		if (search_path.size())
 		{
-			if (!file.SetNameWithPath(lua_tostring(L, n), search_path))
-				Music::instance()->PushBackLevelMusic(file);
+			FileSpecifier file;
+			if (file.SetNameWithPath(inputFile, search_path))
+			{
+				matching_files.push_back(inputFile);
+			}
+			else
+			{
+				FileSpecifier directory = search_path;
+				matching_files = FileSpecifier::GetFilesWithoutExtensionCare(inputFile, { directory });
+			}
 		}
 		else
 		{
-			if (file.SetNameWithPath(lua_tostring(L, n)))
+			FileSpecifier file;
+			if (file.SetNameWithPath(inputFile))
+			{
+				matching_files.push_back(inputFile);
+			}
+			else
+			{
+				matching_files = FileSpecifier::GetFilesWithoutExtensionCare(inputFile);
+			}
+		}
+
+		for (auto&& file : matching_files) {
+
+			int id = Music::instance()->Load(file, false, 1);
+			if (id >= 0) {
+				Music::instance()->Close(id);
 				Music::instance()->PushBackLevelMusic(file);
+				break;
+			}
 		}
 	}
 

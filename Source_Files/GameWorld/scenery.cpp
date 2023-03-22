@@ -197,6 +197,10 @@ void damage_scenery(
 	if (definition->flags&_scenery_can_be_destroyed)
 	{
 		object->shape= definition->destroyed_shape;
+
+		if (!randomize_object_sequence(object_index, object->shape))
+			object->sequence = 0;
+
 		// LP addition: don't create a destruction effect if the effect type is NONE
 		if (definition->destroyed_effect != NONE)
 			new_effect(&object->location, object->polygon, definition->destroyed_effect, object->facing);

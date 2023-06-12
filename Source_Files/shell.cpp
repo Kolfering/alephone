@@ -1585,6 +1585,8 @@ void dump_screen(void)
 		memcpy((uint8 *)t->pixels + t->pitch * y, (uint8 *)pixels + video_w * 3 * (video_h - y - 1), video_w * 3);
 	free(pixels);
 
+	auto pixelsTest = malloc(video_w * video_h * 3);
+
 	// Save surface
 //#ifdef HAVE_PNG
 //        aoIMG_SavePNG(file.GetPath(), t, IMG_COMPRESS_DEFAULT, textp, texts.size());

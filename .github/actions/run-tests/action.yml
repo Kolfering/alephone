@@ -15,5 +15,5 @@ runs:
         clean: false
         
     - name: Run tests
-      run: ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon 2" --editor --replay-quit --replay-directory "${{github.workspace}}/tests/replays"
+      run: ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-quit --replay-directory "${{github.workspace}}/tests/replays"
       shell: pwsh

@@ -35,6 +35,7 @@ AX_ARG_WITH([curl], [cURL for HTTP communication])
 AX_ARG_WITH([zzip], [zziplib support])
 AX_ARG_WITH([png], [libpng PNG screenshot support])
 AX_ARG_WITH([miniupnpc], [miniupnpc support])
+AX_ARG_WITH([catch2], [Unit tests])
 
 dnl Check for programs.
 AC_PROG_CC
@@ -275,6 +276,7 @@ tools/headertest/GNUmakefile
 data/Makefile
 data/default_theme/Makefile
 data/icons/Makefile
+tests/Makefile
 ])
 AC_OUTPUT
 
@@ -316,5 +318,6 @@ AX_PRINT_SUMMARY([curl])
 AX_PRINT_SUMMARY([zzip])
 AX_PRINT_SUMMARY([png])
 AX_PRINT_SUMMARY([miniupnpc])
+AX_PRINT_SUMMARY([catch2])
 AS_ECHO([""])
 AS_ECHO(["Configuration done. Now type \"make\"."])

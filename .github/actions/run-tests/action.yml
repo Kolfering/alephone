@@ -17,7 +17,8 @@ runs:
         
     - name: Run tests
       run: |
-        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon"
-        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon 2"
-        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon Infinity" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon Infinity"
+        ./${{inputs.test_application_path}} ~[Replay] --allow-running-no-tests &&
+        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon" [Replay] &&
+        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon 2" [Replay] &&
+        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon Infinity" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon Infinity" [Replay]
       shell: pwsh

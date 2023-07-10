@@ -12,7 +12,7 @@ jobs:
         
     - name: Get Vcpkg current hash
       run: | 
-        $vcpkg_commit_id = git -C ${env:VCPKG_INSTALLATION_ROOT} rev-parse --short HEAD
+        $vcpkg_commit_id = git -C ${env:VCPKG_INSTALLATION_ROOT} rev-parse --short HEAD &&
         echo vcpkg_current_hash=$vcpkg_commit_id >> $env:GITHUB_ENV
         
     - name: Restore vcpkg cache for x64
@@ -29,7 +29,7 @@ jobs:
         
     - name: Vcpkg Integration
       run: |
-        $vcpkg_path = (Join-Path ${env:VCPKG_INSTALLATION_ROOT} vcpkg.exe)
+        $vcpkg_path = (Join-Path ${env:VCPKG_INSTALLATION_ROOT} vcpkg.exe) &&
         &$vcpkg_path integrate install
         
     - name: Build archives

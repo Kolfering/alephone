@@ -1,10 +1,11 @@
 name: run-tests
-description: multi platforms action used to run unit tests of Aleph One
+description: cross-platform action used to run unit tests of Aleph One
 
 inputs:
  test_application_path:
     required: true
     type: string
+    description: File path to the unit tests runner application
 
 runs:
     using: "composite"
@@ -15,5 +16,8 @@ runs:
         clean: false
         
     - name: Run tests
-      run: ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-quit --replay-directory "${{github.workspace}}/tests/replays"
+      run: |
+        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon"
+        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon 2"
+        ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon Infinity" --replay-quit --replay-directory "${{github.workspace}}/tests/replays/Marathon Infinity"
       shell: pwsh

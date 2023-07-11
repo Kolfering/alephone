@@ -249,7 +249,7 @@ LIBS=`echo "$LIBS" | sed -E 's|-specs=@<:@^ @:>@+||'`
 AX_CHECK_FEATURE_PKG([png], [PNG],
                      [PNG], [libpng])
 
-PKG_CHECK_MODULES([CATCH2], [catch2])
+AX_CHECK_BOOST_HEADER([catch2/catch.hpp])
 
 AX_CHECK_FEATURE_LIB([miniupnpc], [MINIUPNPC], [miniupnpc/miniupnpc.h], [miniupnpc], [upnpDiscover])
 

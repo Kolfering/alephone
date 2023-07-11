@@ -1,9 +1,5 @@
-#if CATCH_VERSION_MAJOR == 2
+#define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
-#else
-#include <catch2/catch_session.hpp>
-#endif
-
 #include "shell_options.h"
 
 extern ShellOptions shell_options;

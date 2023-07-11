@@ -4,11 +4,8 @@
 #include "shell_options.h"
 #include "interface.h"
 
-#if CATCH_VERSION_MAJOR == 2
 #include <catch2/catch.hpp>
-#else
-#include <catch2/catch_test_macros.hpp>
-#endif
+
 
 extern ShellOptions shell_options;
 

@@ -7,8 +7,6 @@ jobs:
     runs-on: macos-13
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: true
         
     - name: Install Tools
       run: brew install nasm
@@ -40,8 +38,7 @@ jobs:
     - name: Bootstrap Steamcmd
       continue-on-error: true #Steamcmd may throw error exit code while bootstrapping that we can ignore, we will see on upload if everything is working fine
       run: |
-        cp -r "vcpkg/installed-x64-osx/x64-osx/tools/steamworks-sdk" "Steam/steamcmd" &&
-        ./Steam/steamcmd/steamcmd.sh +quit
+        cd "vcpkg/installed-x64-osx" "Steam/steamcmd" && ls -d */
 
     - name: Restore config.vdf
       env: 

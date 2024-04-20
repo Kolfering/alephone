@@ -38,8 +38,9 @@ jobs:
     - name: Bootstrap Steamcmd
       continue-on-error: true #Steamcmd may throw error exit code while bootstrapping that we can ignore, we will see on upload if everything is working fine
       run: |
-        cd vcpkg/installed-x64-osx/x64-osx/tools/steamworks-sdk
-        chmod +x steamcmd.sh &&
+        mkdir ~/Steam && cd ~/Steam &&
+        curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_osx.tar.gz" | tar zxvf - &&
+        cd ~/Steam &&
         ./steamcmd.sh
 
     - name: Restore config.vdf

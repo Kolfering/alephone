@@ -53,6 +53,6 @@ runs:
       
     - name: Build
       run: |
-        if [ -n ${{inputs.xcode_arch}} ]; then arch_arg="-arch ${{inputs.xcode_arch}}" fi &&
-        cd PBProjects && xcodebuild ${arch_arg} -target "Aleph One" DEVELOPMENT_TEAM='' CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE='Automatic' build
+        if [ -n ${{inputs.xcode_arch}} ]; then arch_arg="-arch ${{inputs.xcode_arch}}"; fi &&
+        cd PBProjects && xcodebuild $arch_arg -target "Aleph One" DEVELOPMENT_TEAM='' CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE='Automatic' build
       shell: bash

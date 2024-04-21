@@ -43,8 +43,6 @@ jobs:
       - name: Build
         uses: ./.github/actions/build-mac-osx
         with:
-          vcpkg_installed_folder: installed-x64-osx
-          vcpkg_arch: x64
           xcode_arch: x86_64
           
   mac-osx-arm:
@@ -54,8 +52,6 @@ jobs:
       - name: Build
         uses: ./.github/actions/build-mac-osx
         with:
-          vcpkg_installed_folder: installed-arm64-osx
-          vcpkg_arch: arm
           xcode_arch: arm64
           
   windows-x64:

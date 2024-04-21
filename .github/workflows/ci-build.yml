@@ -44,6 +44,7 @@ jobs:
         uses: ./.github/actions/build-mac-osx
         with:
           xcode_arch: x86_64
+          xcode_targets: "Aleph One"
           
   mac-osx-arm:
     runs-on: macos-13
@@ -53,6 +54,7 @@ jobs:
         uses: ./.github/actions/build-mac-osx
         with:
           xcode_arch: arm64
+          xcode_targets: "Aleph One"
           
   windows-x64:
     runs-on: windows-2022

@@ -57,10 +57,10 @@ runs:
       
     - name: Set Xcode arguments
       run: | 
-        $arch_arg=("${{inputs.xcode_arch}}") ? "-arch ${{inputs.xcode_arch}}" : "" &&
-        $targets_arg = foreach ($target in "${{inputs.xcode_targets}}".Split(",").Trim()) { $targets_arg + "-target " + """" + $target + """" } &&
-        echo xcode_arch=$arch_arg >> $env:GITHUB_ENV &&
-        echo xcode_targets=$targets_arg >> $env:GITHUB_ENV &&
+        $arch_arg=("${{inputs.xcode_arch}}") ? "-arch ${{inputs.xcode_arch}}" : ""
+        $targets_arg = foreach ($target in "${{inputs.xcode_targets}}".Split(",").Trim()) { $targets_arg + "-target " + """" + $target + """" }
+        echo xcode_arch=$arch_arg >> $env:GITHUB_ENV
+        echo xcode_targets=$targets_arg >> $env:GITHUB_ENV
       shell: pwsh
       
     - name: Build

@@ -38,9 +38,11 @@ jobs:
     - name: Bootstrap Steamcmd
       continue-on-error: true #Steamcmd may throw error exit code while bootstrapping that we can ignore, we will see on upload if everything is working fine
       run: |
-        mkdir ~/Steam && cd ~/Steam &&
-        curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_osx.tar.gz" | tar zxvf - &&
+        mkdir ~/Steam &&
+        cp -R vcpkg/installed-x64-osx/x64-osx/tools/steamworks-sdk/ ~/Steam &&
         cd ~/Steam &&
+        chmod +x steamcmd.sh &&
+        chmod +x steamcmd &&
         ./steamcmd.sh +quit
 
     - name: Restore config.vdf
@@ -52,4 +54,4 @@ jobs:
       run: cd PBProjects && xcodebuild -target "Marathon Steam" -target "Classic Marathon Launcher" DEVELOPMENT_TEAM='' CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE='Automatic' build
 
     - name: Deploy to Steam
-      run: ~/.Steam/steamcmd.sh +login alephone_upload +run_app_build ../m1_mac.vdf +quit
+      run: ~/Steam/steamcmd.sh +login alephone_upload +run_app_build ../m1_mac.vdf +quit

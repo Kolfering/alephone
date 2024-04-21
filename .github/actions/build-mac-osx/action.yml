@@ -6,6 +6,11 @@ inputs:
     description: "x86_64 or arm64 or empty for both"
     required: false
     type: string
+    
+xcode_targets:
+    description: "comma separated list of Xcode targets we want to build"
+    required: true
+    type: string
 
 runs:
     using: "composite"
@@ -53,6 +58,6 @@ runs:
       
     - name: Build
       run: |
-        arch_arg=$([ -n "${{inputs.xcode_arch}}" ] && echo "-arch ${{inputs.xcode_arch}}" || echo "");
+        arch_arg=${{inputs.xcode_arch}} ? "-arch ${{inputs.xcode_arch}}" : ""
         cd PBProjects && xcodebuild $arch_arg -target "Aleph One" DEVELOPMENT_TEAM='' CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE='Automatic' build
-      shell: bash
+      shell: pwsh

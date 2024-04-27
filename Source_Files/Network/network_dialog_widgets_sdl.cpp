@@ -275,7 +275,7 @@ w_players_in_game2::update_display(bool inFromDynamicWorld /* default=false */) 
                 else {
                     // Get player information from topology
                     player_info*	thePlayerInfo	= (player_info*)NetGetPlayerData(i);
-                    
+
                     // Copy the player name.  We will store it as a cstring...
                     strncpy(thePlayerEntry.player_name, thePlayerInfo->name, MAXIMUM_PLAYER_NAME_LENGTH + 1);
 

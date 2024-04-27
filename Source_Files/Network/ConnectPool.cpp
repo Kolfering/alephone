@@ -37,6 +37,16 @@ NonblockingConnect::NonblockingConnect(const IPaddress& ip)
 	connect();
 }
 
+NonblockingConnect::NonblockingConnect(CommunicationsChannel* channel)
+{
+	m_channel = std::unique_ptr<CommunicationsChannel>(channel);
+	m_status = Connected;
+	m_ip = channel->peerAddress();
+	m_ipSpecified = true;
+	m_thread = 0;
+	m_port = 0;
+}
+
 NonblockingConnect::~NonblockingConnect()
 {
 	if (m_thread)
@@ -66,6 +76,12 @@ int NonblockingConnect::connect_thread(void *p)
 
 int NonblockingConnect::Thread()
 {
+	if (m_channel && m_channel->isConnected())
+	{
+		m_status = Connected;
+		return 0;
+	}
+
 	if (!m_ipSpecified)
 	{
 		if (SDLNet_ResolveHost(&m_ip, const_cast<char*>(m_address.c_str()), m_port) < 0)
@@ -142,6 +158,23 @@ NonblockingConnect* ConnectPool::connect(const IPaddress& ip)
 		{
 			m_pool[i].second = false;
 			m_pool[i].first = new NonblockingConnect(ip);
+			return m_pool[i].first;
+		}
+	}
+
+	return 0;
+}
+
+NonblockingConnect* ConnectPool::connect(CommunicationsChannel* channel)
+{
+	fast_free();
+
+	for (int i = 0; i < kPoolSize; i++)
+	{
+		if (m_pool[i].second && !m_pool[i].first)
+		{
+			m_pool[i].second = false;
+			m_pool[i].first = new NonblockingConnect(channel);
 			return m_pool[i].first;
 		}
 	}

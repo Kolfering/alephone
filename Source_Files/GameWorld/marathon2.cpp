@@ -665,6 +665,7 @@ bool entering_map(bool restoring_saved)
 	/* and since no monsters have paths, we should make sure no paths think they have monsters */
 	reset_paths();
 	
+#ifndef NETWORK_SERVER
 	/* mark our shape collections for loading and load them */
 	mark_environment_collections(static_world->environment_code, true);
 	mark_all_monster_collections(true);
@@ -678,6 +679,7 @@ bool entering_map(bool restoring_saved)
 
 	load_all_monster_sounds();
 	load_all_game_sounds(static_world->environment_code);
+#endif // !NETWORK_SERVER
 
 #if !defined(DISABLE_NETWORKING)
 	/* tell the keyboard controller to start recording keyboard flags */
@@ -690,7 +692,10 @@ bool entering_map(bool restoring_saved)
 #if !defined(DISABLE_NETWORKING)
 	if (dynamic_world->player_count>1 && !restoring_saved) initialize_net_game();
 #endif // !defined(DISABLE_NETWORKING)
+
+#ifndef NETWORK_SERVER
 	randomize_scenery_shapes();
+#endif
 
 //	reset_action_queues(); //¶¶
 //	sync_heartbeat_count();
@@ -704,10 +709,12 @@ bool entering_map(bool restoring_saved)
 	NetSetChatCallbacks(InGameChatCallbacks::instance());
 #endif // !defined(DISABLE_NETWORKING)
 
+#ifndef NETWORK_SERVER
 	// Zero out fades *AND* any inadvertant fades from script start...
 	stop_fade();
 	set_fade_effect(NONE);
-	
+#endif
+
 	if (!success) leaving_map();
 
 	first_frame_rendered = false;

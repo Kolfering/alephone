@@ -52,7 +52,9 @@ enum {
   kZIPPED_PHYSICS_MESSAGE,
   kZIPPED_LUA_MESSAGE,
   kNETWORK_STATS_MESSAGE,
-  kGAME_SESSION_MESSAGE
+  kGAME_SESSION_MESSAGE,
+  kDEDICATED_SERVER_COMMAND_MESSAGE,
+  kDEDICATED_SERVER_READY_MESSAGE
 };
 
 template <MessageTypeID tMessageType, typename tValueType>
@@ -191,6 +193,19 @@ private:
 	ClientChatInfo mClientChatInfo = {};
 	int16 mAction = kAdd;
 	int16 mStreamID = 0;
+};
+
+class DedicatedServerReadyMessage : public SmallMessageHelper
+{
+public:
+	enum { kType = kDEDICATED_SERVER_READY_MESSAGE };
+	DedicatedServerReadyMessage() : SmallMessageHelper() { }
+	DedicatedServerReadyMessage* clone() const { return new DedicatedServerReadyMessage(*this); }
+	MessageTypeID type() const { return kType; }
+
+protected:
+	void reallyDeflateTo(AOStream& outputStream) const {}
+	bool reallyInflateFrom(AIStream& inputStream) { return true; }
 };
   
 
@@ -426,8 +441,38 @@ class TopologyMessage : public SmallMessageHelper
   NetTopology mTopology = {};
 };
 
+class DedicatedServerCommandMessage : public SmallMessageHelper
+{
+public:
+	enum { kType = kDEDICATED_SERVER_COMMAND_MESSAGE };
+
+	DedicatedServerCommandMessage() : SmallMessageHelper() {}
+
+	DedicatedServerCommandMessage(DedicatedServerCommand command, short streamId = NONE) : SmallMessageHelper() {
+		mCommand = command;
+		mStreamId = streamId;
+	}
+
+	DedicatedServerCommandMessage* clone() const {
+		return new DedicatedServerCommandMessage(*this);
+	}
+
+	DedicatedServerCommand command() const { return mCommand; }
+	short streamId() const { return mStreamId; }
+
+	MessageTypeID type() const { return kType; }
+
+protected:
+	void reallyDeflateTo(AOStream& outputStream) const;
+	bool reallyInflateFrom(AIStream& inputStream);
+
+private:
+	DedicatedServerCommand mCommand;
+	short mStreamId = NONE;
+};
+
 struct Client {
-	Client(CommunicationsChannel *);
+	Client(std::shared_ptr<CommunicationsChannel>);
 	enum {
 		_connecting,
 		_connected_but_not_yet_shown,
@@ -441,15 +486,13 @@ struct Client {
 		_disconnect
 	};
 
-	CommunicationsChannel *channel;
+	std::shared_ptr<CommunicationsChannel> channel;
 	short state;
 	uint16 network_version;
 	Capabilities capabilities;
 	char name[MAX_NET_PLAYER_NAME_LENGTH];
 
 	static CheckPlayerProcPtr check_player;
-
-	~Client();
 
 	void drop();
 
@@ -465,11 +508,13 @@ struct Client {
 	void handleCapabilitiesMessage(CapabilitiesMessage*,CommunicationsChannel*);
 	void handleAcceptJoinMessage(AcceptJoinMessage*, CommunicationsChannel*);
 	void handleChatMessage(NetworkChatMessage*, CommunicationsChannel*);
+	void handleDedicatedServerCommandMessage(DedicatedServerCommandMessage*, CommunicationsChannel*);
 	void handleChangeColorsMessage(ChangeColorsMessage*, CommunicationsChannel*);
 
 	std::unique_ptr<MessageDispatcher> mDispatcher;
 	std::unique_ptr<MessageHandler> mJoinerInfoMessageHandler;
 	std::unique_ptr<MessageHandler> mUnexpectedMessageHandler;
+	std::unique_ptr<MessageHandler> mDedicatedServerCommandMessageHandler;
 	std::unique_ptr<MessageHandler> mCapabilitiesMessageHandler;
 	std::unique_ptr<MessageHandler> mAcceptJoinMessageHandler;
 	std::unique_ptr<MessageHandler> mChatMessageHandler;

@@ -35,6 +35,7 @@ class NonblockingConnect
 public:
 	NonblockingConnect(const std::string& address, uint16 port);
 	NonblockingConnect(const IPaddress& ip);
+	NonblockingConnect(CommunicationsChannel* channel);
 	~NonblockingConnect();
 
 	enum Status
@@ -87,6 +88,7 @@ public:
 	}
 	NonblockingConnect* connect(const std::string& address, uint16 port);
 	NonblockingConnect* connect(const IPaddress& ip);
+	NonblockingConnect* connect(CommunicationsChannel* channel);
 	void abandon(NonblockingConnect*);
 	~ConnectPool();
 

@@ -303,8 +303,8 @@ typedef std::vector<NetworkPlayer_hub>	NetworkPlayerCollection;
 static NetworkPlayerCollection	sNetworkPlayers;
 
 // Local player index is used to decide how to send a packet; ref is used for timing.
-static size_t			sLocalPlayerIndex;
-static size_t			sReferencePlayerIndex;
+static int			sLocalPlayerIndex;
+static int			sReferencePlayerIndex;
 
 static DDPFramePtr	sOutgoingFrame = NULL;
 
@@ -388,7 +388,7 @@ operator <(const NetAddrBlock& a, const NetAddrBlock& b)
 static OSErr
 send_frame_to_local_spoke(DDPFramePtr frame, NetAddrBlock *address, short protocolType, short port)
 {
-#ifndef A1_NETWORK_STANDALONE_HUB
+#ifndef NETWORK_SERVER
         sLocalOutgoingBuffer.datagramSize = frame->data_size;
         memcpy(sLocalOutgoingBuffer.datagramData, frame->data, frame->data_size);
         sLocalOutgoingBuffer.protocolType = protocolType;
@@ -423,7 +423,7 @@ check_send_packet_to_spoke()
 #endif
 
 void
-hub_initialize(int32 inStartingTick, size_t inNumPlayers, const NetAddrBlock* const* inPlayerAddresses, size_t inLocalPlayerIndex)
+hub_initialize(int32 inStartingTick, int inNumPlayers, const NetAddrBlock* const* inPlayerAddresses, int inLocalPlayerIndex)
 {
 //        assert(sNetworkState == eNetworkDown);
 
@@ -463,14 +463,15 @@ hub_initialize(int32 inStartingTick, size_t inNumPlayers, const NetAddrBlock* co
 	}
 #endif
 
-        assert(inLocalPlayerIndex < inNumPlayers);
-        sLocalPlayerIndex = inLocalPlayerIndex;
-	sReferencePlayerIndex = sLocalPlayerIndex;
-
-#ifdef A1_NETWORK_STANDALONE_HUB
-	// There is no local player on standalone hub.
-	sLocalPlayerIndex = (size_t)NONE;
+#if NETWORK_SERVER
+	assert(inLocalPlayerIndex == NONE);
+	sReferencePlayerIndex = NONE;
+#else
+	assert(inLocalPlayerIndex < inNumPlayers);
+	sReferencePlayerIndex = inLocalPlayerIndex;
 #endif
+
+        sLocalPlayerIndex = inLocalPlayerIndex;
 
 	sSmallestPostGameTick = INT32_MAX;
         sSmallestRealGameTick = inStartingTick;
@@ -502,6 +503,9 @@ hub_initialize(int32 inStartingTick, size_t inNumPlayers, const NetAddrBlock* co
 
                 if(inPlayerAddresses[i] != NULL)
                 {
+#if NETWORK_SERVER
+					if (sReferencePlayerIndex == NONE) sReferencePlayerIndex = i;
+#endif
                         thePlayer.mConnected = true;
                         sConnectedPlayersBitmask |= (((uint32)1) << i);
 			thePlayer.mAddressKnown = false;
@@ -539,6 +543,10 @@ hub_initialize(int32 inStartingTick, size_t inNumPlayers, const NetAddrBlock* co
                 sFlagsQueues[i].reset(theFirstTick);
 		sLateFlagsQueues[i].reset(theFirstTick);
         }
+
+#if NETWORK_SERVER
+		if (sReferencePlayerIndex == NONE) sReferencePlayerIndex = 0; //we have no connected players at this point, but just in case
+#endif
         
         sPlayerDataDisposition.reset(theFirstTick);
 	sPlayerReflectedFlags.reset(theFirstTick);
@@ -1070,8 +1078,10 @@ static bool make_up_flags_for_first_incomplete_tick()
 		return false;
 
 	// never make up flags for ourself
+#ifndef NETWORK_SERVER
 	if (getFlagsQueue(sLocalPlayerIndex).getWriteTick() == sSmallestIncompleteTick)
 		return false;
+#endif
 
 	// check to make sure everyone we want to make up flags for is in the lagging players bitmask
 	for (int i = 0; i < sNetworkPlayers.size(); i++)
@@ -1282,6 +1292,20 @@ make_player_netdead(int inPlayerIndex)
 		sConnectedPlayersBitmask &= ~(((uint32)1) << inPlayerIndex);
 		sAddressToPlayerIndex.erase(thePlayer.mAddress);
 	}
+
+#if NETWORK_SERVER
+	if (sReferencePlayerIndex == inPlayerIndex) //fallback to someone else to be the player of reference
+	{
+		for (size_t i = 0; i < sNetworkPlayers.size(); i++)
+		{
+			if (sNetworkPlayers[i].mConnected)
+			{
+				sReferencePlayerIndex = i;
+				break;
+			}
+		}
+	}
+#endif
 
 	// We save this off because player_provided... call below may change it.
 	int32 theSavedIncompleteTick = sSmallestIncompleteTick;

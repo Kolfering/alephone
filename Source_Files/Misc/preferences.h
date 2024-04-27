@@ -285,6 +285,11 @@ void handle_preferences(void);
 void write_preferences(void);
 
 static inline int16 get_fps_target() {
+
+#if NETWORK_SERVER
+	return 30;
+#endif
+
 	return graphics_preferences->fps_target;
 }
 

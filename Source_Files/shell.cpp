@@ -89,7 +89,10 @@
 
 #if !defined(DISABLE_NETWORKING)
 #include <SDL2/SDL_net.h>
+#include "network_private.h"
 #endif
+
+#include "NetworkServer.h"
 
 #ifdef HAVE_PNG
 #include "IMG_savepng.h"
@@ -121,6 +124,10 @@
 #endif
 
 #include "shell_options.h"
+
+#ifdef HAVE_STEAM
+#include "steamshim_child.h"
+#endif
 
 // LP addition: whether or not the cheats are active
 // Defined in shell_misc.cpp
@@ -255,6 +262,8 @@ void initialize_application(void)
 	SDL_setenv("SDL_AUDIODRIVER", "directsound", 0);
 #endif
 
+#ifndef NETWORK_SERVER
+
 	// Initialize SDL
 	int retval = SDL_Init(SDL_INIT_VIDEO |
 						  (shell_options.nosound ? 0 : SDL_INIT_AUDIO) |
@@ -297,6 +306,8 @@ void initialize_application(void)
 		}
 		SDL_EventState(SDL_DROPFILE, SDL_DISABLE);
 	}
+
+#endif // ! NETWORK_SERVER
 
 	// Find data directories, construct search path
 	InitDefaultStringSets();
@@ -370,9 +381,13 @@ void initialize_application(void)
 	initialize_resources();
 
 	init_physics_wad_data();
+
+#ifndef NETWORK_SERVER
 	initialize_fonts(false);
+#endif
 
 	load_film_profile(FILM_PROFILE_DEFAULT, false);
+
 
 	// Parse MML files
 	LoadBaseMMLScripts();
@@ -382,6 +397,7 @@ void initialize_application(void)
 		throw std::runtime_error("Can't find required text strings (missing MML?)");
 	}
 	
+#ifndef NETWORK_SERVER
 	// Check for presence of files (one last chance to change data_search_path)
 	if (!have_default_files()) {
 		char chosen_dir[256];
@@ -402,7 +418,8 @@ void initialize_application(void)
 
 	initialize_fonts(true);
 	Plugins::instance()->enumerate();			
-	
+#endif
+
 	preferences_dir.CreateDirectory();
 	if (!get_data_path(kPathLegacyPreferences).empty())
 		transition_preferences(DirectorySpecifier(get_data_path(kPathLegacyPreferences)));
@@ -426,7 +443,10 @@ void initialize_application(void)
 	recordings_dir.CreateDirectory();
 	screenshots_dir.CreateDirectory();
 	
+
+#ifndef NETWORK_SERVER
 	WadImageCache::instance()->initialize_cache();
+#endif
 
 #ifndef HAVE_OPENGL
 	graphics_preferences->screen_mode.acceleration = _no_acceleration;
@@ -436,6 +456,8 @@ void initialize_application(void)
 	if (shell_options.force_windowed)		// takes precedence over fullscreen because windowed is safer
 		graphics_preferences->screen_mode.fullscreen = false;
 	write_preferences();
+
+
 
 	Plugins::instance()->load_mml();
 
@@ -455,6 +477,7 @@ void initialize_application(void)
 	}
 #endif
 
+#ifndef NETWORK_SERVER
 	if (TTF_Init() < 0)
 	{
 		std::ostringstream oss;
@@ -462,24 +485,31 @@ void initialize_application(void)
 
 		throw std::runtime_error(oss.str());
 	}
-	
+#endif
+
 	HTTPClient::Init();
+
+#ifdef HAVE_STEAM
+	STEAMSHIM_init();
+#endif
 
 	// Initialize everything
 	mytm_initialize();
 //	initialize_fonts();
+#ifndef NETWORK_SERVER
 	SoundManager::instance()->Initialize(*sound_preferences);
 	initialize_marathon_music_handler();
-	initialize_keyboard_controller();
 	initialize_joystick();
 	initialize_gamma();
 	alephone::Screen::instance()->Initialize(&graphics_preferences->screen_mode);
-	initialize_marathon();
 	initialize_screen_drawing();
 	initialize_dialogs();
+	initialize_fades();
+#endif
+	initialize_keyboard_controller();
+	initialize_marathon();
 	initialize_terminal_manager();
 	initialize_shape_handler();
-	initialize_fades();
 	initialize_images_manager();
 	load_environment_from_preferences();
 	initialize_game_state();
@@ -487,18 +517,27 @@ void initialize_application(void)
 
 void shutdown_application(void)
 {
+#ifndef NETWORK_SERVER
 	WadImageCache::instance()->save_cache();
 
 	shutdown_dialogs();
-        
+#endif
+
 #if defined(HAVE_SDL_IMAGE) && (SDL_IMAGE_PATCHLEVEL >= 8)
 	IMG_Quit();
 #endif
 #if !defined(DISABLE_NETWORKING)
 	SDLNet_Quit();
 #endif
+
+#ifndef NETWORK_SERVER
 	TTF_Quit();
 	SDL_Quit();
+#endif
+
+#ifdef HAVE_STEAM
+	STEAMSHIM_deinit();
+#endif
 }
 
 bool networking_available(void)
@@ -610,6 +649,33 @@ short get_level_number_from_user(void)
 	return level;
 }
 
+#ifdef NETWORK_SERVER
+static void RemoteHubHostGame()
+{
+	bool success = NetworkServer::InstantiateNetworkServer(4225);
+
+	if (!success)
+	{
+		logError("Error while trying to instantiate Aleph One remote hub");
+		set_game_state(_quit_game);
+		return;
+	}
+
+	bool gathering_done = NetworkServer::Instance()->SetupGathererGame();
+	if (!gathering_done) return;
+
+	if (!NetStart() || !begin_game(_network_player, false))
+	{
+		NetworkServer::Instance()->Reset();
+		set_game_state(_network_server_waiting_for_gatherer);
+		return;
+	}
+
+	set_game_state(_network_server_game_in_progress);
+}
+#endif
+
+
 const uint32 TICKS_BETWEEN_EVENT_POLL = 16; // 60 Hz
 void main_event_loop(void)
 {
@@ -624,7 +690,7 @@ void main_event_loop(void)
 		switch (game_state) {
 			case _game_in_progress:
 			case _change_level:
-				if (get_fps_target() == 0 || Console::instance()->input_active() || cur_time - last_event_poll >= TICKS_BETWEEN_EVENT_POLL) {
+				if ((get_fps_target() == 0 && get_keyboard_controller_status()) || Console::instance()->input_active() || cur_time - last_event_poll >= TICKS_BETWEEN_EVENT_POLL) {
 					poll_event = true;
 					last_event_poll = cur_time;
 			  } else {				  
@@ -651,6 +717,12 @@ void main_event_loop(void)
 			case _revert_game:
 				yield_time = poll_event = true;
 				break;
+
+#ifdef NETWORK_SERVER
+			case _network_server_waiting_for_gatherer:
+				RemoteHubHostGame();
+				break;
+#endif
 		}
 
 		if (poll_event) {
@@ -671,22 +743,42 @@ void main_event_loop(void)
 			{
 				process_event(event);
 			}
+
+#ifdef HAVE_STEAM
+			while (STEAMSHIM_pump()) {}
+#endif
 		}
 
 		execute_timer_tasks(machine_tick_count());
 		idle_game_state(machine_tick_count());
 
-		if (game_state == _game_in_progress &&
-			get_fps_target() != 0)
+		auto fps_target = get_fps_target();
+		if (!get_keyboard_controller_status())
+		{
+			fps_target = 30;
+		}
+	
+		if ((game_state == _game_in_progress && fps_target != 0) || game_state == _network_server_waiting_for_gatherer)
 		{
 			int elapsed_machine_ticks = machine_tick_count() - cur_time;
-			int desired_elapsed_machine_ticks = MACHINE_TICKS_PER_SECOND / get_fps_target();
+			int desired_elapsed_machine_ticks = MACHINE_TICKS_PER_SECOND / fps_target;
 
 			if (desired_elapsed_machine_ticks - elapsed_machine_ticks > desired_elapsed_machine_ticks / 3)
 			{
 				sleep_for_machine_ticks(1);
 			}
 		}
+#ifndef NETWORK_SERVER
+		else if (game_state != _game_in_progress)
+		{
+			static auto last_redraw = 0;
+			if (machine_tick_count() > last_redraw + TICKS_PER_SECOND / 30)
+			{
+				update_game_window();
+				last_redraw = machine_tick_count();
+			}
+		}
+#endif // NETWORK_SERVER
 	}
 }
 
@@ -1308,7 +1400,7 @@ static void process_event(const SDL_Event &event)
 		switch (event.window.event) {
 			case SDL_WINDOWEVENT_FOCUS_LOST:
 				if (get_game_state() == _game_in_progress && get_keyboard_controller_status() && !Movie::instance()->IsRecording() && shell_options.replay_directory.empty()) {
-					darken_world_window();
+//					darken_world_window();
 					set_keyboard_controller_status(false);
 					show_cursor();
 				}
@@ -1339,7 +1431,7 @@ static void process_event(const SDL_Event &event)
 					// leave it alone
 					break;
 				}
-	
+/*	
 			if (!IsCompositingWindowManagerEnabled()) {
 #ifdef HAVE_OPENGL
 				if (MainScreenIsOpenGL())
@@ -1347,7 +1439,8 @@ static void process_event(const SDL_Event &event)
 				else
 #endif
 					update_game_window();
-				}
+		}
+		*/
 				break;
 		}
 		break;

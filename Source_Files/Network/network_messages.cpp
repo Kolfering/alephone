@@ -62,7 +62,6 @@ static void deflateNetPlayer(AOStream& outputStream, const NetPlayer &player) {
   outputStream << player.stream_id;
   outputStream << player.net_dead;
 
-
   write_string(outputStream, player.player_data.name);
   outputStream << player.player_data.desired_color;
   outputStream << player.player_data.team;
@@ -318,6 +317,11 @@ void TopologyMessage::reallyDeflateTo(AOStream& outputStream) const {
   for (int i = 0; i < MAXIMUM_NUMBER_OF_NETWORK_PLAYERS; i++) {
     deflateNetPlayer(outputStream, mTopology.players[i]);
   }
+
+  outputStream.write((byte*)&mTopology.server.dspAddress.host, 4);
+  outputStream.write((byte*)&mTopology.server.dspAddress.port, 2);
+  outputStream.write((byte*)&mTopology.server.ddpAddress.host, 4);
+  outputStream.write((byte*)&mTopology.server.ddpAddress.port, 2);
 }
 
 bool TopologyMessage::reallyInflateFrom(AIStream& inputStream) {
@@ -344,7 +348,26 @@ bool TopologyMessage::reallyInflateFrom(AIStream& inputStream) {
     inflateNetPlayer(inputStream, mTopology.players[i]);
   }
 
+  inputStream.read((byte*)&mTopology.server.dspAddress.host, 4);
+  inputStream.read((byte*)&mTopology.server.dspAddress.port, 2);
+  inputStream.read((byte*)&mTopology.server.ddpAddress.host, 4);
+  inputStream.read((byte*)&mTopology.server.ddpAddress.port, 2);
+
   return true;
+}
+
+void DedicatedServerCommandMessage::reallyDeflateTo(AOStream& outputStream) const {
+
+	outputStream << (short)mCommand;
+	outputStream << mStreamId;
+}
+
+bool DedicatedServerCommandMessage::reallyInflateFrom(AIStream& inputStream) {
+	short command;
+	inputStream >> command;
+	mCommand = static_cast<DedicatedServerCommand>(command);
+	inputStream >> mStreamId;
+	return true;
 }
 
 #endif // !defined(DISABLE_NETWORKING)

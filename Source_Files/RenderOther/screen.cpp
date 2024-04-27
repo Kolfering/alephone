@@ -1234,6 +1234,7 @@ void toggle_fullscreen()
  */
 
 static bool clear_next_screen = false;
+static void darken_world_window(void);
 
 void update_world_view_camera()
 {
@@ -1538,6 +1539,11 @@ void render_screen(short ticks_elapsed)
 			}
 		}
 
+		if (!get_keyboard_controller_status())
+		{
+			darken_world_window();
+		}
+
 		if (update_full_screen || Screen::instance()->lua_hud())
 		{
 			MainScreenUpdateRect(0, 0, 0, 0);
@@ -1552,7 +1558,14 @@ void render_screen(short ticks_elapsed)
 #ifdef HAVE_OPENGL
 	// Swap OpenGL double-buffers
 	if (screen_mode.acceleration != _no_acceleration)
+	{
+		if (!get_keyboard_controller_status())
+		{
+			darken_world_window();
+		}
+
 		OGL_SwapBuffers();
+	}
 #endif
 	
 	Movie::instance()->AddFrame(Movie::FRAME_NORMAL);
@@ -1939,7 +1952,7 @@ static inline void draw_pattern_rect(T *p, int pitch, uint32 pixel, const SDL_Re
 	}
 }
 
-void darken_world_window(void)
+static void darken_world_window(void)
 {
 	// Get world window bounds
 	SDL_Rect r = Screen::instance()->window_rect();
@@ -1979,7 +1992,7 @@ void darken_world_window(void)
 		glPopMatrix();
 		glPopAttrib();
 
-		MainScreenSwap();
+//		MainScreenSwap();
 		return;
 	}
 #endif
@@ -2053,6 +2066,8 @@ void DrawSurface(SDL_Surface *s, SDL_Rect &dest_rect, SDL_Rect &src_rect)
 
 void draw_intro_screen(void)
 {
+#ifndef NETWORK_SERVER
+
 	if (fade_blacked_screen())
 		return;
 	
@@ -2087,6 +2102,7 @@ void draw_intro_screen(void)
 		DrawSurface(s, dst_rect, src_rect);
 		intro_buffer_changed = false;
 	}
+#endif // !NETWORK_SERVER
 }
 
 /*

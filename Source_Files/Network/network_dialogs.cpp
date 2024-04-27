@@ -75,14 +75,13 @@ Apr 10, 2003 (Woody Zenfell):
 #include	"network.h"
 #include	"network_dialogs.h"
 #include	"network_games.h"
-#include	"player.h" // ZZZ: for MAXIMUM_NUMBER_OF_PLAYERS, for reassign_player_colors
 #include	"metaserver_dialogs.h" // GameAvailableMetaserverAnnouncer
 #include	"wad.h" // jkvw: for read_wad_file_checksum 
 #include "game_wad.h" // get_map_file
-
+#include "NetworkServer.h"
 #include <map>
 #include <functional>
-
+#include "network_messages.h"
 // For LAN netgame location services
 #include	<sstream>
 #include	"network_private.h" // actually just need "network_dialogs_private.h"
@@ -185,7 +184,7 @@ JoinerSeekingGathererAnnouncer::lost_gatherer_callback(const SSLP_ServiceInstanc
  *
  ****************************************************/
 
-bool network_gather(bool inResumingGame)
+bool network_gather(bool inResumingGame, bool& outUseDedicatedServer)
 {
 	bool successful= false;
 	game_info myGameInfo;
@@ -198,94 +197,113 @@ bool network_gather(bool inResumingGame)
 	{
 		myPlayerInfo.desired_color= myPlayerInfo.color;
 		memset(myPlayerInfo.long_serial_number, 0, LONG_SERIAL_NUMBER_LENGTH);
-		
-		std::unique_ptr<GameAvailableMetaserverAnnouncer> metaserverAnnouncer;
-		if(NetEnter())
-		{
-			bool gather_dialog_result;
-		
-			if(NetGather(&myGameInfo, sizeof(game_info), (void*) &myPlayerInfo, 
-				sizeof(myPlayerInfo), inResumingGame, outUpnpPortForward))
-			{
-				GathererAvailableAnnouncer announcer;
-				
-				if (!gMetaserverClient) gMetaserverClient = new MetaserverClient ();
-
-				if(advertiseOnMetaserver)
-				{
-					try
-					{
-						metaserverAnnouncer.reset(new GameAvailableMetaserverAnnouncer(myGameInfo));
-					}
-					catch (const MetaserverClient::LoginDeniedException& e)
-					{
-						char message[1024];
-						if (e.code() == MetaserverClient::LoginDeniedException::BadUserOrPassword)
-						{
-							strncpy(message, "Login denied: bad username or password. Your game could not be advertised on the Internet.", 1024);
-						}
-						else if (e.code() == MetaserverClient::LoginDeniedException::UserAlreadyLoggedIn)
-						{
-							strncpy(message, "Login denied: that user is already logged in. Your game could not be advertised on the Internet.", 1024);
-						}
-						else if (e.code() == MetaserverClient::LoginDeniedException::AccountAlreadyLoggedIn)
-						{
-							strncpy(message, "Login denied: that account is already logged in. Your game could not be advertised on the Internet.", 1024);
-						}
-						else if (e.code() == MetaserverClient::LoginDeniedException::RoomFull)
-						{
-							strncpy(message, "Login denied: room full! Your game could not be advertised on the Internet.", 1024);
-						}
-						else if (e.code() == MetaserverClient::LoginDeniedException::AccountLocked)
-						{
-							strncpy(message, "Login denied: your account is locked. Your game could not be advertised on the Internet.", 1024);
-						}
-						else
-						{
-							sprintf(message, "There was a problem connecting to the server that tracks Internet games (%s). Please try again later.", e.what());
-						}
-
-						alert_user(message, 0);
-					}
-					catch (const MetaserverClient::ServerConnectException&)
-					{
-						alert_user(infoError, strNETWORK_ERRORS, netWarnCouldNotAdvertiseOnMetaserver, 0);
-					}
-				}
-
-				gather_dialog_result = GatherDialog::Create()->GatherNetworkGameByRunning();
-				
-			} else {
-				gather_dialog_result = false;
-			}
-			
-			if (gather_dialog_result) {
-				NetDoneGathering();
-				if (advertiseOnMetaserver) 
-				{
-					metaserverAnnouncer->Start(myGameInfo.time_limit);
-					gMetaserverClient->setMode(1, NetSessionIdentifier());
-					gMetaserverClient->pump();
-				}
-				successful= true;
-			}
-			else
-			{
-				delete gMetaserverClient;
-				gMetaserverClient = new MetaserverClient();
-				NetCancelGather();
-				NetExit();
-			}
-		} else {
-			/* error correction handled in the network code now.. */
-		}
+		successful = NetworkGatherCore(&myGameInfo, &myPlayerInfo, advertiseOnMetaserver, inResumingGame, outUpnpPortForward, true);
 	}
 
+	outUseDedicatedServer = true;
 	hide_cursor();
 	return successful;
 }
 
-GatherDialog::GatherDialog() {  }
+bool NetworkGatherCore(game_info* game_data,
+	player_info* player_data,
+	bool advertiseOnMetaserver,
+	bool resuming_game,
+	bool attempt_upnp,
+	bool use_dedicated_server)
+{
+	std::unique_ptr<GameAvailableMetaserverAnnouncer> metaserverAnnouncer;
+#ifndef NETWORK_SERVER
+	if (NetEnter(use_dedicated_server))
+#endif
+	{
+
+		bool gather_dialog_result;
+
+		if (NetGather(game_data, sizeof(game_info), player_data,
+			sizeof(player_data), resuming_game, attempt_upnp))
+		{
+			GathererAvailableAnnouncer announcer;
+
+			if (!gMetaserverClient) gMetaserverClient = new MetaserverClient();
+
+			if (advertiseOnMetaserver && !use_dedicated_server)
+			{
+				try
+				{
+					metaserverAnnouncer.reset(new GameAvailableMetaserverAnnouncer(*game_data));
+				}
+				catch (const MetaserverClient::LoginDeniedException& e)
+				{
+					char message[1024];
+					if (e.code() == MetaserverClient::LoginDeniedException::BadUserOrPassword)
+					{
+						strncpy(message, "Login denied: bad username or password. Your game could not be advertised on the Internet.", 1024);
+					}
+					else if (e.code() == MetaserverClient::LoginDeniedException::UserAlreadyLoggedIn)
+					{
+						strncpy(message, "Login denied: that user is already logged in. Your game could not be advertised on the Internet.", 1024);
+					}
+					else if (e.code() == MetaserverClient::LoginDeniedException::AccountAlreadyLoggedIn)
+					{
+						strncpy(message, "Login denied: that account is already logged in. Your game could not be advertised on the Internet.", 1024);
+					}
+					else if (e.code() == MetaserverClient::LoginDeniedException::RoomFull)
+					{
+						strncpy(message, "Login denied: room full! Your game could not be advertised on the Internet.", 1024);
+					}
+					else if (e.code() == MetaserverClient::LoginDeniedException::AccountLocked)
+					{
+						strncpy(message, "Login denied: your account is locked. Your game could not be advertised on the Internet.", 1024);
+					}
+					else
+					{
+						sprintf(message, "There was a problem connecting to the server that tracks Internet games (%s). Please try again later.", e.what());
+					}
+
+					alert_user(message, 0);
+				}
+				catch (const MetaserverClient::ServerConnectException&)
+				{
+					alert_user(infoError, strNETWORK_ERRORS, netWarnCouldNotAdvertiseOnMetaserver, 0);
+				}
+			}
+
+#if NETWORK_SERVER
+			gather_dialog_result = NetworkServer::Instance()->GatherJoiners();
+#else
+			gather_dialog_result = NetGameJoin(player_data, sizeof(player_data), nullptr) && GatherDialog::Create(use_dedicated_server)->GatherNetworkGameByRunning();
+#endif // !NETWORK_SERVER
+
+		}
+		else {
+			gather_dialog_result = false;
+		}
+
+		if (gather_dialog_result) {
+			NetDoneGathering();
+			if (advertiseOnMetaserver && !use_dedicated_server)
+			{
+				metaserverAnnouncer->Start(game_data->time_limit);
+				gMetaserverClient->setMode(1, NetSessionIdentifier());
+				gMetaserverClient->pump();
+			}
+			return true;
+		}
+		else
+		{
+			delete gMetaserverClient;
+			gMetaserverClient = new MetaserverClient();
+			if (!use_dedicated_server) NetCancelGather();
+			NetExit();
+		}
+	}
+	/* else {
+		 error correction handled in the network code now.. 
+	} */
+
+	return false;
+}
 
 GatherDialog::~GatherDialog()
 {
@@ -313,7 +331,7 @@ bool GatherDialog::GatherNetworkGameByRunning ()
 	m_startWidget->set_callback(std::bind(&GatherDialog::StartGameHit, this));
 	m_ungatheredWidget->SetItemSelectedCallback(std::bind(&GatherDialog::gathered_player, this, std::placeholders::_1));
 
-	m_startWidget->deactivate ();
+	m_startWidget->activate ();
 	
 	NetSetGatherCallbacks(this);
 	
@@ -352,18 +370,40 @@ bool GatherDialog::GatherNetworkGameByRunning ()
 void GatherDialog::idle ()
 {
 	MetaserverClient::pumpAll();
-	
-	prospective_joiner_info info;
-	if (player_search(info)) {
-		m_ungathered_players[info.stream_id] = info;
-		update_ungathered_widget ();
+
+	if (dedicated_server_mode)
+	{
+		switch (NetUpdateJoinState())
+		{
+			case netPlayerDropped:
+			case netPlayerChanged:
+				m_pigWidget->redraw();
+				break;
+
+			case netStartingUp:
+				Stop(true);
+				break;
+			
+			case netCancelled:
+			case netJoinErrorOccurred:
+				Stop(false);
+				break;
+		}
 	}
-	
-	if (m_autogatherWidget->get_value ()) {
-		std::map<int, prospective_joiner_info>::iterator it;
-		it = m_ungathered_players.begin ();
-		while (it != m_ungathered_players.end () && NetGetNumberOfPlayers() < MAXIMUM_NUMBER_OF_PLAYERS) {
-			gathered_player ((it++)->second);
+	else
+	{
+		prospective_joiner_info info;
+		if (player_search(info)) {
+			m_ungathered_players[info.stream_id] = info;
+			update_ungathered_widget();
+		}
+
+		if (m_autogatherWidget->get_value()) {
+			std::map<int, prospective_joiner_info>::iterator it;
+			it = m_ungathered_players.begin();
+			while (it != m_ungathered_players.end() && NetGetNumberOfPlayers() < MAXIMUM_NUMBER_OF_PLAYERS) {
+				gathered_player((it++)->second);
+			}
 		}
 	}
 }
@@ -392,23 +432,57 @@ bool GatherDialog::player_search (prospective_joiner_info& player)
 
 bool GatherDialog::gathered_player (const prospective_joiner_info& player)
 {
-	if (NetGetNumberOfPlayers() >= MAXIMUM_NUMBER_OF_PLAYERS) return false;
-	int theGatherPlayerResult = NetGatherPlayer(player, reassign_player_colors);
-	
-	if (theGatherPlayerResult != kGatherPlayerFailed) {
-		m_ungathered_players.erase (m_ungathered_players.find (player.stream_id));
-		update_ungathered_widget ();
+	if (dedicated_server_mode) {
+		NetDedicatedServerSendCommand(DedicatedServerCommand::kAcceptJoiner_Command, player.stream_id);
+		auto it = m_ungathered_players.find(player.stream_id);
+
+		if (it != m_ungathered_players.end())
+		{
+			m_ungathered_players.erase(m_ungathered_players.find(player.stream_id));
+			update_ungathered_widget();
+		}
+
 		return true;
-	} else
-		return false;
+	}
+	else
+	{
+		if (NetGetNumberOfPlayers() >= MAXIMUM_NUMBER_OF_PLAYERS) return false;
+		int theGatherPlayerResult = NetGatherPlayer(player, reassign_player_colors);
+
+		if (theGatherPlayerResult != kGatherPlayerFailed) {
+			m_ungathered_players.erase(m_ungathered_players.find(player.stream_id));
+			update_ungathered_widget();
+			return true;
+		}
+		else
+			return false;
+	}
 }
 
 void GatherDialog::StartGameHit ()
 {
-	for (std::map<int, prospective_joiner_info>::iterator it = m_ungathered_players.begin (); it != m_ungathered_players.end (); ++it)
-		NetHandleUngatheredPlayer ((*it).second);
-	
-	Stop (true);
+	if (!dedicated_server_mode) {
+		for (std::map<int, prospective_joiner_info>::iterator it = m_ungathered_players.begin(); it != m_ungathered_players.end(); ++it)
+			NetHandleUngatheredPlayer((*it).second);
+
+		Stop(true);
+	}
+	else
+	{
+		NetDedicatedServerSendCommand(DedicatedServerCommand::kStartGame_Command);
+	}
+}
+
+void GatherDialog::JoiningPlayerArrived(const prospective_joiner_info* player)
+{
+	if (m_autogatherWidget->get_value()) {
+		gathered_player(*player);
+	}
+	else
+	{
+		m_ungathered_players[player->stream_id] = *player;
+		update_ungathered_widget();
+	}
 }
 
 void GatherDialog::JoinSucceeded(const prospective_joiner_info* player)
@@ -417,33 +491,28 @@ void GatherDialog::JoinSucceeded(const prospective_joiner_info* player)
 		m_startWidget->activate ();
 	
 	m_pigWidget->redraw ();
-
-	if (gMetaserverClient->isConnected())
-	{
-		gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
-	}
 }
 
-void GatherDialog::JoiningPlayerDropped(const prospective_joiner_info* player)
+bool GatherDialog::JoiningPlayerDropped(const prospective_joiner_info* player)
 {
+	bool found = false;
 	std::map<int, prospective_joiner_info>::iterator it = m_ungathered_players.find (player->stream_id);
-	if (it != m_ungathered_players.end ())
-		m_ungathered_players.erase (it);
+	if (it != m_ungathered_players.end()) {
+		m_ungathered_players.erase(it);
+		found = true;
+	}
 	
 	update_ungathered_widget ();
+	return found;
 }
 
-void GatherDialog::JoinedPlayerDropped(const prospective_joiner_info* player)
+bool GatherDialog::JoinedPlayerDropped(const prospective_joiner_info* player)
 {
-	if (NetGetNumberOfPlayers () < 2)
+	if (NetGetNumberOfPlayers () < 1)
 		m_startWidget->deactivate ();
 
 	m_pigWidget->redraw ();
-
-	if (gMetaserverClient->isConnected())
-	{
-		gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
-	}
+	return true;
 }
 
 void GatherDialog::JoinedPlayerChanged(const prospective_joiner_info* player)
@@ -502,7 +571,7 @@ int network_join(void)
 	show_cursor(); // Hidden one way or another
 	
 	/* If we can enter the network... */
-	if(NetEnter())
+	if(NetEnter(true))
 	{
 
 		join_dialog_result = JoinDialog::Create()->JoinNetworkGameByRunning();
@@ -1525,120 +1594,6 @@ int level_index_to_menu_index (int level_index, int32 entry_flags)
 	return 0;
 }
 
-/*************************************************************************************************
- *
- * Function: reassign_player_colors
- * Purpose:  This function used to reassign a player's color if it conflicted with another
- *           player's color. Now it reassigns everyone's colors. for the old function, see the
- *           obsoleted version (called check_player_info) at the end of this file.
- *           (Woody note: check_player_info can be found in network_dialogs_macintosh.cpp.)
- *
- *************************************************************************************************/
-/* Note that we now only force unique colors across teams. */
-
-// ZZZ: moved here (from network_dialogs_macintosh.cpp) so it can be shared with SDL version
-
-void reassign_player_colors(
-	short player_index,
-	short num_players)
-{
-	short actual_colors[MAXIMUM_NUMBER_OF_PLAYERS];  // indexed by player
-	bool colors_taken[NUMBER_OF_TEAM_COLORS];   // as opposed to desired team. indexed by team
-	game_info *game;
-	
-	(void)(player_index);
-
-	assert(num_players<=MAXIMUM_NUMBER_OF_PLAYERS);
-	game= (game_info *)NetGetGameData();
-
-	objlist_set(colors_taken, false, NUMBER_OF_TEAM_COLORS);
-	objlist_set(actual_colors, NONE, MAXIMUM_NUMBER_OF_PLAYERS);
-
-	if(game->game_options & _force_unique_teams)
-	{
-		short index;
-		
-		for(index= 0; index<num_players; ++index)
-		{
-			player_info *player= (player_info *)NetGetPlayerData(index);
-			if(!colors_taken[player->desired_color])
-			{
-				player->color= player->desired_color;
-				player->team= player->color;
-				colors_taken[player->color]= true;
-				actual_colors[index]= player->color;
-			}
-		}
-		
-		/* Now give them a random color.. */
-		for (index= 0; index<num_players; index++)
-		{
-			player_info *player= (player_info *)NetGetPlayerData(index);
-
-			if (actual_colors[index]==NONE) // This player needs a team
-			{
-				short remap_index;
-				
-				for (remap_index= 0; remap_index<num_players; remap_index++)
-				{
-					if (!colors_taken[remap_index])
-					{
-						player->color= remap_index;
-						player->team= remap_index;
-						colors_taken[remap_index] = true;
-						break;
-					}
-				}
-				assert(remap_index<num_players);
-			}
-		}	
-	} else {
-		short index;
-		short team_color;
-		
-		/* Allow teams.. */
-		for(team_color= 0; team_color<NUMBER_OF_TEAM_COLORS; ++team_color)
-		{
-			// let's mark everybody down for the teams that they can get without conflicts.
-			for (index = 0; index < num_players; index++)
-			{
-				player_info *player= (player_info *)NetGetPlayerData(index);
-		
-				if (player->team==team_color && !colors_taken[player->desired_color])
-				{
-					player->color= player->desired_color;
-					colors_taken[player->color] = true;
-					actual_colors[index]= player->color;
-				}
-			}
-			
-			// ok, everyone remaining gets a team that we pick for them.
-			for (index = 0; index < num_players; index++)
-			{
-				player_info *player= (player_info *)NetGetPlayerData(index);
-	
-				if (player->team==team_color && actual_colors[index]==NONE) // This player needs a team
-				{
-					short j;
-					
-					for (j = 0; j < num_players; j++)
-					{
-						if (!colors_taken[j])
-						{
-							player->color= j;
-							colors_taken[j] = true;
-							break;
-						}
-					}
-					assert(j < num_players);
-				}
-			}
-		}
-	}
-}
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Postgame Carnage Report stuff
 struct net_rank rankings[MAXIMUM_NUMBER_OF_PLAYERS];
@@ -2414,7 +2369,7 @@ void display_net_game_stats(void)
 class SdlGatherDialog : public GatherDialog
 {
 public:
-	SdlGatherDialog()
+	SdlGatherDialog(bool dedicated_server_mode) : GatherDialog(dedicated_server_mode)
 	{
 		vertical_placer *placer = new vertical_placer;
 		placer->dual_add(new w_title("GATHER NETWORK GAME"), m_dialog);
@@ -2501,9 +2456,9 @@ private:
 };
 
 std::unique_ptr<GatherDialog>
-GatherDialog::Create()
+GatherDialog::Create(bool dedicate_server_mode)
 {
-	return std::unique_ptr<GatherDialog>(new SdlGatherDialog);
+	return std::make_unique<SdlGatherDialog>(dedicate_server_mode);
 }
 
 extern struct color_table *build_8bit_system_color_table(void);

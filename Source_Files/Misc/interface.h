@@ -238,9 +238,12 @@ enum { /* states. */
 	_change_level,
 	_begin_display_of_epilogue,
 	_displaying_network_game_dialogs,
+	_network_server_waiting_for_gatherer,
+	_network_server_game_in_progress,
 	NUMBER_OF_GAME_STATES
 };
 
+bool begin_game(short user, bool cheat);
 bool game_window_is_full_screen(void);
 void set_change_level_destination(short level_number);
 bool networking_available(void);
@@ -401,7 +404,7 @@ enum {	// Results for network_join
         kNetworkJoinedResumeGame
 };
 
-bool network_gather(bool inResumingGame);
+bool network_gather(bool inResumingGame, bool& outUseDedicatedServer);
 int network_join(void);
 
 /* ---------- prototypes/PHYSICS.C */

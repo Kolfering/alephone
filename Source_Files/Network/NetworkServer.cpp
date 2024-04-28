@@ -15,51 +15,48 @@ NetworkServer::NetworkServer(short port)
 	_server = std::make_unique<CommunicationsChannelFactory>(port);
 }
 
-bool NetworkServer::SetupGathererGame()
+NetworkServer::~NetworkServer()
 {
+	NetExit();
+}
+
+bool NetworkServer::SetupGathererGame(bool& gathering_done)
+{
+	gathering_done = false;
+
 	if (!_gatherer && _gatherer_client.expired())
 	{
 		_gatherer = std::shared_ptr<CommunicationsChannel>(_server->newIncomingConnection());
 
-		if (!_gatherer) return false;
+		if (!_gatherer) return true;
 		NetSetDefaultInflater(_gatherer.get());
 	}
 
-	if (!GetGameDataFromGatherer())
-	{
-		Reset();
-		return false;
-	}
+	if (!GetGameDataFromGatherer()) return Reset();
+
+	SetNetscriptStatus(_lua_message.get());
 
 	_gatherer->enqueueOutgoingMessage(DedicatedServerReadyMessage());
 
-	if (!NetProcessNewJoiner(_gatherer))
-	{
-		Reset();
-		return false;
-	}
+	if (!NetProcessNewJoiner(_gatherer)) return Reset();
 
 	_gatherer_client = std::weak_ptr<CommunicationsChannel>(_gatherer);
 	_gatherer.reset();
 
 	bool success = NetworkGatherCore(&_topology_message->topology()->game_data, &_topology_message->topology()->players->player_data, false, !_physics_message, false, false);
 
-	if (!success) Reset();
+	if (!success) return Reset();
+
+	gathering_done = true;
 	return success;
 }
 
-void NetworkServer::Reset()
+bool NetworkServer::Reset()
 {
-	_start_game_signal = false;
-	_gatherer.reset();
-	_gatherer_client.reset();
-	_topology_message.reset();
-	_map_message.reset();
-	_lua_message.reset();
-	_physics_message.reset();
-
-	NetExit();
-	NetEnter(false);
+	auto port = _instance->_port;
+	delete _instance;
+	_instance = nullptr;
+	return InstantiateNetworkServer(port);
 }
 
 bool NetworkServer::GatherJoiners()
@@ -69,7 +66,7 @@ bool NetworkServer::GatherJoiners()
 		//MetaserverClient::pumpAll();
 		GathererAvailableAnnouncer::pump();
 		prospective_joiner_info player;
-		NetCheckForNewJoiner(player, _server.get());
+		NetCheckForNewJoiner(player, _server.get(), _gatherer_joined_as_client);
 	}
 
 	return _start_game_signal;
@@ -117,4 +114,28 @@ bool NetworkServer::GetGameDataFromGatherer()
 	}
 
 	return false;
+}
+
+int NetworkServer::GetMapData(uint8** data)
+{
+	if (!_map_message) return 0;
+
+	*data = _map_message->buffer();
+	return _map_message->length();
+}
+
+int NetworkServer::GetPhysicsData(uint8** data)
+{
+	if (!_physics_message) return 0;
+
+	*data = _physics_message->buffer();
+	return _physics_message->length();
+}
+
+int NetworkServer::GetLuaData(uint8** data)
+{
+	if (!_lua_message) return 0;
+
+	*data = _lua_message->buffer();
+	return _lua_message->length();
 }

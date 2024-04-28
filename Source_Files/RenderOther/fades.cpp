@@ -273,8 +273,6 @@ void initialize_fades(
 bool update_fades(
 	bool game_in_progress)
 {
-#ifndef NETWORK_SERVER
-
   if (FADE_IS_ACTIVE(fade))
 	{
 		struct fade_definition *definition= get_fade_definition(fade->type);
@@ -308,9 +306,6 @@ bool update_fades(
 	}
 	
 	return FADE_IS_ACTIVE(fade) ? true : false;
-#endif // !NETWORK_SERVER
-
-	return false;
 }
 
 void SetFadeEffectDelay(int _FadeEffectDelay)
@@ -321,7 +316,6 @@ void SetFadeEffectDelay(int _FadeEffectDelay)
 void set_fade_effect(
 	short type)
 {
-#ifndef NETWORK_SERVER
 	bool ForceFEUpdate = false;
 	if (FadeEffectDelay > 0)
 	{
@@ -353,7 +347,6 @@ void set_fade_effect(
 			}
 		}
 	}
-#endif
 }
 
 void start_fade(
@@ -368,7 +361,6 @@ void explicit_start_fade(
 	struct color_table *animated_color_table,
 	bool game_in_progress)
 {
-#ifndef NETWORK_SERVER
 	struct fade_definition *definition= get_fade_definition(type);
 	// LP change: idiot-proofing
 	if (!definition) return;
@@ -415,13 +407,11 @@ void explicit_start_fade(
 			SET_FADE_ACTIVE_STATUS(fade, true);
 		}
 	}
-#endif
 }
 
 void stop_fade(
 	void)
 {
-#ifndef NETWORK_SERVER
 	if (FADE_IS_ACTIVE(fade))
 	{
 		struct fade_definition* definition = get_fade_definition(fade->type);
@@ -433,23 +423,18 @@ void stop_fade(
 
 		SET_FADE_ACTIVE_STATUS(fade, false);
 	}
-#endif
 }
 
 bool fade_finished(
 	void)
 {
-#ifndef NETWORK_SERVER
 	return FADE_IS_ACTIVE(fade) ? false : true;
-#endif
-	return false;
 }
 
 void full_fade(
 	short type,
 	struct color_table *original_color_table)
 {
-#ifndef NETWORK_SERVER
 	struct color_table animated_color_table;
 	
 	obj_copy(animated_color_table, *original_color_table);
@@ -458,7 +443,6 @@ void full_fade(
 	while (update_fades())
 		Music::instance()->Idle();
 		;
-#endif
 }
 
 void gamma_correct_color_table(
@@ -466,7 +450,6 @@ void gamma_correct_color_table(
 	struct color_table *corrected_color_table,
 	short gamma_level)
 {
-#ifndef NETWORK_SERVER
 	short i;
 	float gamma;
 	struct rgb_color *uncorrected= uncorrected_color_table->colors;
@@ -488,7 +471,6 @@ void gamma_correct_color_table(
 		corrected->green = static_cast<uint16>(pow(static_cast<float>(uncorrected->green/65535.0), gamma)*65535.0);
 		corrected->blue = static_cast<uint16>(pow(static_cast<float>(uncorrected->blue/65535.0), gamma)*65535.0);
 	}
-#endif
 }
 
 float get_actual_gamma_adjust(short gamma_level)
@@ -532,7 +514,6 @@ static void recalculate_and_display_color_table(
 	struct color_table *animated_color_table,
 	bool fade_active)
 {
-#ifndef NETWORK_SERVER
 	bool full_screen= false;
 	
 	// LP addition: set up the OGL queue entry for the liquid effects
@@ -576,7 +557,6 @@ static void recalculate_and_display_color_table(
 	
 	if (get_game_state() < _game_in_progress)  // main menu or chapter screen
 		draw_intro_screen();
-#endif
 }
 
 /* ---------- fade functions */
@@ -587,7 +567,6 @@ static void tint_color_table(
 	struct rgb_color *color,
 	_fixed transparency)
 {
-#ifndef NETWORK_SERVER
 	// LP addition: support for OpenGL faders
 	if (CurrentOGLFader)
 	{
@@ -608,7 +587,6 @@ static void tint_color_table(
 		adjusted->green= unadjusted->green + (((color->green-unadjusted->green)*adjusted_transparency)>>(FIXED_FRACTIONAL_BITS-ADJUSTED_TRANSPARENCY_DOWNSHIFT));
 		adjusted->blue= unadjusted->blue + (((color->blue-unadjusted->blue)*adjusted_transparency)>>(FIXED_FRACTIONAL_BITS-ADJUSTED_TRANSPARENCY_DOWNSHIFT));
 	}
-#endif
 }
 
 static void randomize_color_table(
@@ -617,7 +595,6 @@ static void randomize_color_table(
 	struct rgb_color *color,
 	_fixed transparency)
 {
-#ifndef NETWORK_SERVER
 	// LP addition: support for OpenGL faders
 	if (CurrentOGLFader)
 	{
@@ -649,7 +626,6 @@ static void randomize_color_table(
 		adjusted->green= unadjusted->green + (FADES_RANDOM()&mask);
 		adjusted->blue= unadjusted->blue + (FADES_RANDOM()&mask);
 	}
-#endif
 }
 
 /* unlike pathways, all colors won’t pass through 50% gray at the same time */
@@ -659,7 +635,6 @@ static void negate_color_table(
 	struct rgb_color *color,
 	_fixed transparency)
 {
-#ifndef NETWORK_SERVER
 	// LP addition: support for OpenGL faders
 	if (CurrentOGLFader)
 	{
@@ -686,7 +661,6 @@ static void negate_color_table(
 			CEILING((unadjusted->blue^color->blue)+transparency, (int32)unadjusted->blue) :
 			FLOOR((unadjusted->blue^color->blue)-transparency, (int32)unadjusted->blue);
 	}
-#endif
 }
 
 static void dodge_color_table(
@@ -695,7 +669,6 @@ static void dodge_color_table(
 	struct rgb_color *color,
 	_fixed transparency)
 {
-#ifndef NETWORK_SERVER
 	// LP addition: support for OpenGL faders
 	if (CurrentOGLFader)
 	{
@@ -717,7 +690,6 @@ static void dodge_color_table(
 		component= 0xffff - (int32(1LL*(color->green^0xffff)*unadjusted->green)>>FIXED_FRACTIONAL_BITS) - transparency, adjusted->green= CEILING(component, unadjusted->green);
 		component= 0xffff - (int32(1LL*(color->blue^0xffff)*unadjusted->blue)>>FIXED_FRACTIONAL_BITS) - transparency, adjusted->blue= CEILING(component, unadjusted->blue);
 	}
-#endif
 }
 
 static void burn_color_table(
@@ -726,7 +698,6 @@ static void burn_color_table(
 	struct rgb_color *color,
 	_fixed transparency)
 {
-#ifndef NETWORK_SERVER
 	// LP addition: support for OpenGL faders
 	if (CurrentOGLFader)
 	{
@@ -749,7 +720,6 @@ static void burn_color_table(
 		component= (int32(1LL*color->green*unadjusted->green)>>FIXED_FRACTIONAL_BITS) + transparency, adjusted->green= CEILING(component, unadjusted->green);
 		component= (int32(1LL*color->blue*unadjusted->blue)>>FIXED_FRACTIONAL_BITS) + transparency, adjusted->blue= CEILING(component, unadjusted->blue);
 	}
-#endif
 }
 
 static void soft_tint_color_table(
@@ -758,7 +728,6 @@ static void soft_tint_color_table(
 	struct rgb_color *color,
 	_fixed transparency)
 {
-#ifndef NETWORK_SERVER
 	// LP addition: support for OpenGL faders
 	if (CurrentOGLFader)
 	{
@@ -784,7 +753,6 @@ static void soft_tint_color_table(
 		adjusted->green= unadjusted->green + (((((color->green*intensity)>>(FIXED_FRACTIONAL_BITS-ADJUSTED_TRANSPARENCY_DOWNSHIFT))-unadjusted->green)*adjusted_transparency)>>(FIXED_FRACTIONAL_BITS-ADJUSTED_TRANSPARENCY_DOWNSHIFT));
 		adjusted->blue= unadjusted->blue + (((((color->blue*intensity)>>(FIXED_FRACTIONAL_BITS-ADJUSTED_TRANSPARENCY_DOWNSHIFT))-unadjusted->blue)*adjusted_transparency)>>(FIXED_FRACTIONAL_BITS-ADJUSTED_TRANSPARENCY_DOWNSHIFT));
 	}
-#endif
 }
 
 
@@ -804,13 +772,11 @@ void SetOGLFader(int Index)
 // Translate the color and opacity values
 static void TranslateToOGLFader(rgb_color &Color, _fixed Opacity)
 {
-#ifndef NETWORK_SERVER
 	assert(CurrentOGLFader);
 	CurrentOGLFader->Color[0] = Color.red/float(FIXED_ONE-1);
 	CurrentOGLFader->Color[1] = Color.green/float(FIXED_ONE-1);
 	CurrentOGLFader->Color[2] = Color.blue/float(FIXED_ONE-1);
 	CurrentOGLFader->Color[3] = Opacity/float(FIXED_ONE);
-#endif
 }
 
 
@@ -819,7 +785,6 @@ struct fade_effect_definition *original_fade_effect_definitions = NULL;
 
 void reset_mml_faders()
 {
-#ifndef NETWORK_SERVER
 	if (original_fade_definitions) {
 		for (int i = 0; i < NUMBER_OF_FADE_TYPES; i++)
 			fade_definitions[i] = original_fade_definitions[i];
@@ -833,12 +798,10 @@ void reset_mml_faders()
 		free(original_fade_effect_definitions);
 		original_fade_effect_definitions = NULL;
 	}
-#endif
 }
 
 void parse_mml_faders(const InfoTree& root)
 {
-#ifndef NETWORK_SERVER
 	// back up old values first
 	if (!original_fade_definitions) {
 		original_fade_definitions = (struct fade_definition *) malloc(sizeof(struct fade_definition) * NUMBER_OF_FADE_TYPES);
@@ -910,5 +873,4 @@ void parse_mml_faders(const InfoTree& root)
 		ltree.read_indexed("fader", def.fade_type, NUMBER_OF_FADE_TYPES, true);
 		ltree.read_fixed("opacity", def.transparency);
 	}
-#endif
 }

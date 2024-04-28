@@ -2066,8 +2066,6 @@ void DrawSurface(SDL_Surface *s, SDL_Rect &dest_rect, SDL_Rect &src_rect)
 
 void draw_intro_screen(void)
 {
-#ifndef NETWORK_SERVER
-
 	if (fade_blacked_screen())
 		return;
 	
@@ -2102,7 +2100,6 @@ void draw_intro_screen(void)
 		DrawSurface(s, dst_rect, src_rect);
 		intro_buffer_changed = false;
 	}
-#endif // !NETWORK_SERVER
 }
 
 /*

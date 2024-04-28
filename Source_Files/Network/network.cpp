@@ -644,12 +644,11 @@ void Client::handleAcceptJoinMessage(AcceptJoinMessage* acceptJoinMessage,
 	  }
 
 #if NETWORK_SERVER
-	  if (channel.get() != NetworkServer::Instance()->GetGathererChannel())
-	  {
+	  if (channel.get() == NetworkServer::Instance()->GetGathererChannel())
+		  NetworkServer::Instance()->GathererJoinedAsClient();
+	  else
 		  NetworkServer::Instance()->SendMessageToGatherer(*acceptJoinMessage);
-	  }
 #endif // NETWORK_SERVER
-
 
     } else {
       // joiner didn't accept!?
@@ -1273,21 +1272,19 @@ bool NetEnter(bool use_dedicated_server)
 		NetSetServerIdentifier(use_dedicated_server ? NONE : 0);
 #endif // NETWORK_SERVER
 
-		if (!use_dedicated_server) {
-			// ZZZ: Sorry, if this swapping is not supported on all current A1
-			// platforms, feel free to rewrite it in a way that is.
-			ddpSocket = SDL_SwapBE16(GAME_PORT);
-			error = NetDDPOpenSocket(&ddpSocket, NetDDPPacketHandler);
-			if (!error) {
-				sOldSelfSendStatus = NetSetSelfSend(true);
-				sCurrentGameProtocol->Enter(&netState);
+		// ZZZ: Sorry, if this swapping is not supported on all current A1
+		// platforms, feel free to rewrite it in a way that is.
+		ddpSocket = SDL_SwapBE16(GAME_PORT);
+		error = NetDDPOpenSocket(&ddpSocket, NetDDPPacketHandler);
+		if (!error) {
+			sOldSelfSendStatus = NetSetSelfSend(true);
+			sCurrentGameProtocol->Enter(&netState);
 
-				netState = netDown;
-				handlerState = netDown;
-			}
-			else {
-				logError("unable to open socket");
-			}
+			netState = netDown;
+			handlerState = netDown;
+		}
+		else {
+			logError("unable to open socket");
 		}
 	}
   
@@ -2097,10 +2094,15 @@ bool NetChangeMap(
 	} else {
 	  // being the server, we must send out the map to everyone.	
 	  if(localPlayerIndex==sServerPlayerIndex) {
-	    wad = (unsigned char *)get_map_for_net_transfer(entry);
-	    assert(wad);	      
-	    
-	    length= get_net_map_data_length(wad);
+
+#if NETWORK_SERVER
+		  length = NetworkServer::Instance()->GetMapData(&wad);
+#else
+		  wad = (unsigned char*)get_map_for_net_transfer(entry);
+		  assert(wad);
+		  length = get_net_map_data_length(wad);
+#endif
+
 	    NetDistributeGameDataToAllPlayers(wad, length, true);
 	  } else { // wait for de damn map.
 	      wad = NetReceiveGameData(true);
@@ -2153,6 +2155,8 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 	short physics_message_id;
 	byte *physics_buffer = NULL;
 	int32 physics_length;
+	size_t lua_length;
+	byte* lua_buffer = NULL;
 	
 	message_id = dedicated_server ? _connecting_to_dedicated_server : (topology->player_count==2) ? (_distribute_map_single) : (_distribute_map_multiple);
 	physics_message_id = dedicated_server ? _connecting_to_dedicated_server : (topology->player_count==2) ? (_distribute_physics_single) : (_distribute_physics_multiple);
@@ -2165,8 +2169,14 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 	total_length= (topology->player_count-1)*wad_length;
 	
 	/* Get the physics */
-	if(do_physics)
-		physics_buffer= (unsigned char *)get_network_physics_buffer(&physics_length);
+	if (do_physics)
+	{
+#if NETWORK_SERVER
+		physics_length = NetworkServer::Instance()->GetPhysicsData(&physics_buffer);
+#else
+		physics_buffer = (unsigned char*)get_network_physics_buffer(&physics_length);
+#endif 
+	}
 	
 	// build a list of players to send to
 	std::vector<CommunicationsChannel *> channels;
@@ -2251,16 +2261,23 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 
 	if (do_netscript)
 	{
+#if NETWORK_SERVER
+		lua_length = NetworkServer::Instance()->GetLuaData(&lua_buffer);
+#else
+		lua_length = deferred_script_length;
+		lua_buffer = deferred_script_data;
+#endif
+
 		if (zipCapableChannels.size())
 		{
-			ZippedLuaMessage zippedLuaMessage(deferred_script_data, deferred_script_length);
+			ZippedLuaMessage zippedLuaMessage(lua_buffer, lua_length);
 			std::unique_ptr<UninflatedMessage> uninflatedMessage(zippedLuaMessage.deflate());
 			std::for_each(zipCapableChannels.begin(), zipCapableChannels.end(), std::bind(&CommunicationsChannel::enqueueOutgoingMessage, std::placeholders::_1, *uninflatedMessage));
 		}
 
 		if (zipIncapableChannels.size())
 		{
-			LuaMessage luaMessage(deferred_script_data, deferred_script_length);
+			LuaMessage luaMessage(lua_buffer, lua_length);
 			std::for_each(zipIncapableChannels.begin(), zipIncapableChannels.end(), std::bind(&CommunicationsChannel::enqueueOutgoingMessage, std::placeholders::_1, luaMessage));
 		}
 	}
@@ -2280,7 +2297,6 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 			}
 		}
 	}
-	
     
 	if (error) { // ghs: nothing above returns an error at the moment,
 		// but I'll leave so you know what error could be displayed
@@ -2289,25 +2305,23 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 		alert_user(infoError, strNETWORK_ERRORS, netErrWaitedTooLongForMap, error);
 		error= 1;
 	}
-  
+
+#ifndef NETWORK_SERVER
 	if (!error) {
+
 		/* Process the physics file & frees it!.. */
 		if (physics_buffer)
 			process_network_physics_model(physics_buffer);
 		
-#ifndef NETWORK_SERVER
 		if (!dedicated_server) draw_progress_bar(total_length, total_length);
-#endif
 		
 		if (do_netscript) {
 			LoadLuaScript ((char*)deferred_script_data, deferred_script_length, _lua_netscript);
 		}
 	}
 	
-#ifndef NETWORK_SERVER
 	if (!dedicated_server) close_progress_dialog();
-#endif // !NETWORK_SERVER
-
+#endif
 	
 	return error;
 }
@@ -2455,10 +2469,10 @@ bool NetProcessNewJoiner(std::shared_ptr<CommunicationsChannel> new_joiner)
 }
 
 // If a potential joiner has connected to us, handle em
-bool NetCheckForNewJoiner (prospective_joiner_info &info, CommunicationsChannelFactory* server_override)
+bool NetCheckForNewJoiner (prospective_joiner_info &info, CommunicationsChannelFactory* server_override, bool process_new_joiners)
 {  
 	auto actual_server = server_override ? server_override : server;
-	CommunicationsChannel* new_joiner = actual_server ? actual_server->newIncomingConnection() : nullptr;
+	CommunicationsChannel* new_joiner = process_new_joiners && actual_server ? actual_server->newIncomingConnection() : nullptr;
 	
 	NetProcessNewJoiner(std::shared_ptr<CommunicationsChannel>(new_joiner));
 	

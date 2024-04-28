@@ -3374,11 +3374,13 @@ void read_preferences ()
 	default_network_preferences(network_preferences);
 	default_player_preferences(player_preferences);
 	default_input_preferences(input_preferences);
+
+#ifndef NETWORK_SERVER
+
 	*sound_preferences = SoundManager::Parameters();
 	default_environment_preferences(environment_preferences);
 
 	// Slurp in the file and parse it
-
 	FileSpecifier FileSpec;
 
 	FileSpec.SetToPreferencesDir();
@@ -3480,7 +3482,7 @@ void read_preferences ()
 	validate_player_preferences(player_preferences);
 	validate_input_preferences(input_preferences);
 	validate_environment_preferences(environment_preferences);
-	
+#endif
 	// jkvw: If we try to load a default file, but can't, we'll have set the game error.
 	//       But that's not useful, because we're just going to try loading the file
 	//       from user preferences.  It used to be this code was only called in initialisation,

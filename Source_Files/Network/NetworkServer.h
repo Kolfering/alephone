@@ -16,17 +16,23 @@ private:
 	std::unique_ptr<PhysicsMessage> _physics_message;
 	int _port;
 	bool _start_game_signal = false;
+	bool _gatherer_joined_as_client = false;
 	NetworkServer(short port);
+	~NetworkServer();
 	bool GetGameDataFromGatherer();
 public:
 	bool GatherJoiners();
-	bool SetupGathererGame();
+	bool SetupGathererGame(bool& gathering_done);
 	static bool InstantiateNetworkServer(short port);
 	static NetworkServer* Instance() { return _instance; }
+	static bool Reset();
 	CommunicationsChannel* GetGathererChannel() const { return _gatherer ? _gatherer.get() : _gatherer_client.lock().get(); }
 	bool SendMessageToGatherer(const Message& message);
 	void StartGame() { _start_game_signal = true; }
-	void Reset();
+	void GathererJoinedAsClient() { _gatherer_joined_as_client = true; }
+	int GetMapData(uint8** data);
+	int GetPhysicsData(uint8** data);
+	int GetLuaData(uint8** data);
 };
 
 #endif

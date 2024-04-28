@@ -221,7 +221,7 @@ void NetHandleUngatheredPlayer(prospective_joiner_info ungathered_player);
 // jkvw: replaced SSLP hinting address with host address
 bool NetGameJoin(void *player_data, short player_data_size, const char* host_address_string);
 
-bool NetCheckForNewJoiner(prospective_joiner_info &info, CommunicationsChannelFactory* server_override = nullptr);
+bool NetCheckForNewJoiner(prospective_joiner_info &info, CommunicationsChannelFactory* server_override = nullptr, bool process_new_joiners = true);
 bool NetProcessNewJoiner(std::shared_ptr<CommunicationsChannel> new_joiner);
 short NetUpdateJoinState(void);
 void NetCancelJoin(void);

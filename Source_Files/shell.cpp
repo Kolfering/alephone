@@ -312,19 +312,22 @@ void initialize_application(void)
 	// Find data directories, construct search path
 	InitDefaultStringSets();
 
+#ifndef NETWORK_SERVER
 #ifndef SCENARIO_IS_BUNDLED
 	default_data_dir = get_data_path(kPathDefaultData);
 #endif
-	
 	local_data_dir = get_data_path(kPathLocalData);
-	log_dir = get_data_path(kPathLogs);
 	preferences_dir = get_data_path(kPathPreferences);
 	saved_games_dir = get_data_path(kPathSavedGames);
 	quick_saves_dir = get_data_path(kPathQuickSaves);
 	image_cache_dir = get_data_path(kPathImageCache);
 	recordings_dir = get_data_path(kPathRecordings);
 	screenshots_dir = get_data_path(kPathScreenshots);
+#endif
+
+	log_dir = get_data_path(kPathLogs);
 	
+#ifndef NETWORK_SERVER
 	if (!get_data_path(kPathBundleData).empty())
 	{
 		bundle_data_dir = get_data_path(kPathBundleData);
@@ -382,13 +385,12 @@ void initialize_application(void)
 
 	init_physics_wad_data();
 
-#ifndef NETWORK_SERVER
 	initialize_fonts(false);
 #endif
 
 	load_film_profile(FILM_PROFILE_DEFAULT, false);
 
-
+#ifndef NETWORK_SERVER
 	// Parse MML files
 	LoadBaseMMLScripts();
 
@@ -397,7 +399,7 @@ void initialize_application(void)
 		throw std::runtime_error("Can't find required text strings (missing MML?)");
 	}
 	
-#ifndef NETWORK_SERVER
+
 	// Check for presence of files (one last chance to change data_search_path)
 	if (!have_default_files()) {
 		char chosen_dir[256];
@@ -418,14 +420,17 @@ void initialize_application(void)
 
 	initialize_fonts(true);
 	Plugins::instance()->enumerate();			
-#endif
 
 	preferences_dir.CreateDirectory();
 	if (!get_data_path(kPathLegacyPreferences).empty())
 		transition_preferences(DirectorySpecifier(get_data_path(kPathLegacyPreferences)));
 
+#endif
+
 	// Load preferences
 	initialize_preferences();
+
+#ifndef NETWORK_SERVER
 
 	local_data_dir.CreateDirectory();
 	saved_games_dir.CreateDirectory();
@@ -442,11 +447,8 @@ void initialize_application(void)
 	image_cache_dir.CreateDirectory();
 	recordings_dir.CreateDirectory();
 	screenshots_dir.CreateDirectory();
-	
 
-#ifndef NETWORK_SERVER
 	WadImageCache::instance()->initialize_cache();
-#endif
 
 #ifndef HAVE_OPENGL
 	graphics_preferences->screen_mode.acceleration = _no_acceleration;
@@ -460,7 +462,7 @@ void initialize_application(void)
 
 
 	Plugins::instance()->load_mml();
-
+#endif
 //	SDL_WM_SetCaption(application_name, application_name);
 
 // #if defined(HAVE_SDL_IMAGE) && !(defined(__APPLE__) && defined(__MACH__))
@@ -508,10 +510,12 @@ void initialize_application(void)
 #endif
 	initialize_keyboard_controller();
 	initialize_marathon();
+#ifndef NETWORK_SERVER
 	initialize_terminal_manager();
 	initialize_shape_handler();
 	initialize_images_manager();
 	load_environment_from_preferences();
+#endif
 	initialize_game_state();
 }
 
@@ -650,28 +654,35 @@ short get_level_number_from_user(void)
 }
 
 #ifdef NETWORK_SERVER
-static void RemoteHubHostGame()
+static bool RemoteHubHostGame()
 {
 	bool success = NetworkServer::InstantiateNetworkServer(4225);
 
 	if (!success)
 	{
 		logError("Error while trying to instantiate Aleph One remote hub");
-		set_game_state(_quit_game);
-		return;
+		return false;
 	}
 
-	bool gathering_done = NetworkServer::Instance()->SetupGathererGame();
-	if (!gathering_done) return;
+	bool gathering_done;
+	success = NetworkServer::Instance()->SetupGathererGame(gathering_done);
 
-	if (!NetStart() || !begin_game(_network_player, false))
+	if (!success)
 	{
-		NetworkServer::Instance()->Reset();
+		logError("Error while trying to gather game on Aleph One remote hub");
+		return false;
+	}
+
+	if (!gathering_done) return true;
+
+	if (!NetStart() || !NetChangeMap(nullptr) || !NetSync())
+	{
 		set_game_state(_network_server_waiting_for_gatherer);
-		return;
+		return NetworkServer::Reset();
 	}
 
 	set_game_state(_network_server_game_in_progress);
+	return true;
 }
 #endif
 
@@ -720,7 +731,11 @@ void main_event_loop(void)
 
 #ifdef NETWORK_SERVER
 			case _network_server_waiting_for_gatherer:
-				RemoteHubHostGame();
+				if (!RemoteHubHostGame()) set_game_state(_quit_game);
+				break;
+
+			case _network_server_game_in_progress:
+				NetProcessMessagesInGame();
 				break;
 #endif
 		}

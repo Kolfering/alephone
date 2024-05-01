@@ -1761,7 +1761,6 @@ bool NetStart(
 		}
 #endif
 
-	//resuming game is always false for standalone hub
 	NetDistributeTopology(resuming_saved_game ? tagRESUME_GAME : tagSTART_GAME);
 
 	return true;
@@ -2280,9 +2279,7 @@ bool NetChangeMap(
 	      }
 	  }
 	  
-#if NETWORK_SERVER
-	  free(wad);
-#else
+#ifndef NETWORK_SERVER
 	  /* Now load the level.. */
 	  if (wad)
 	    {

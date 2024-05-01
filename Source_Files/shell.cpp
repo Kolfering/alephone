@@ -654,9 +654,12 @@ short get_level_number_from_user(void)
 }
 
 #if NETWORK_SERVER
+
+extern bool hub_is_active();
+
 static bool InitGameForStandaloneHub(void)
 {
-	initialize_map_for_new_level();
+	initialize_map_for_new_game();
 
 	byte* physics = nullptr;
 	int physics_length = NetworkServer::Instance()->GetPhysicsData(&physics);
@@ -678,9 +681,7 @@ static bool InitGameForStandaloneHub(void)
 
 	return true;
 }
-#endif // NETWORK_SERVER
 
-#ifdef NETWORK_SERVER
 static bool StandaloneHubHostGame(bool& game_has_started)
 {
 	game_has_started = false;
@@ -769,7 +770,16 @@ void main_event_loop(void)
 			}
 
 			case _network_server_game_in_progress:
-				NetProcessMessagesInGame();
+
+				if (hub_is_active())
+					NetProcessMessagesInGame();
+				else 
+				{
+					NetUnSync();
+					NetworkServer::Reset();
+					set_game_state(_network_server_waiting_for_gatherer);
+				}
+
 				break;
 #endif
 		}

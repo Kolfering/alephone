@@ -334,7 +334,7 @@ static byte sScratchBuffer[kLossyByteStreamDataBufferSize];
 
 
 static myTMTaskPtr	sHubTickTask = NULL;
-static bool		sHubActive = false;	// used to enable the packet handler
+static std::atomic_bool	sHubActive = { false };	// used to enable the packet handler
 static bool		sHubInitialized = false;
 
 
@@ -566,7 +566,10 @@ hub_initialize(int32 inStartingTick, int inNumPlayers, const NetAddrBlock* const
 	sHubInitialized = true;
 }
 
-
+bool hub_is_active()
+{
+	return sHubActive.load();
+}
 
 void
 hub_cleanup(bool inGraceful, int32 inSmallestPostGameTick)
@@ -651,7 +654,7 @@ hub_check_for_completion()
 		}
 	}
 
-	if(!someoneStillActive)
+	if (!someoneStillActive) 
 		sHubActive = false;
 }
 		

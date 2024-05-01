@@ -76,10 +76,8 @@ typedef struct game_info
 	int16  kill_limit;
 	int16  game_options;
 	int16  difficulty_level;
-	bool   server_is_playing; // if false, then observing
-	bool   allow_mic;
 
-        int16 cheat_flags;
+	int16 cheat_flags;
 	
 	// where the game takes place
 	int16  level_number;
@@ -266,7 +264,8 @@ bool NetUnSync(void);
 bool NetStart(void);
 void NetCancelGather(void);
 bool NetworkGatherCore(game_info* game_data, player_info* player_data, bool advertiseOnMetaserver, bool resuming_game, bool attempt_upnp, bool use_dedicated_server);
-bool NetConnectDedicatedServer(bool resuming_game);
+bool NetConnectRemoteHub();
+void NetSetResumedGameWadForRemoteHub(byte* wad, int length);
 int32 NetGetNetTime(void);
 
 bool NetChangeMap(struct entry_point *entry);
@@ -276,6 +275,8 @@ byte* NetReceiveGameData(bool do_physics);
 void DeferredScriptSend (byte* data, size_t length);
 void SetNetscriptStatus (bool status);
 
+void construct_multiplayer_starts(player_start_data* outStartArray, short* outStartCount);
+void match_starts_with_existing_players(player_start_data* ioStartArray, short* ioStartCount);
 void display_net_game_stats(void);
 
 // ZZZ change: caller specifies int16 ID for distribution type.  Unknown types (when received) are

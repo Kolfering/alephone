@@ -186,6 +186,8 @@ static bool do_netscript;
 static CommunicationsChannelFactory *server = NULL;
 static std::unique_ptr<CommunicationsChannel> dedicated_server = NULL;
 static bool use_dedicated_server = false;
+static byte* resumed_wad_data_for_remote_hub = NULL;
+static int resumed_wad_size_for_remote_hub = 0;
 typedef std::map<int, Client *> client_map_t;
 static client_map_t connections_to_clients;
 typedef std::map<int, ClientChatInfo *> client_chat_info_map_t;
@@ -915,7 +917,7 @@ static void handleJoinPlayerMessage(JoinPlayerMessage* joinPlayerMessage, Commun
     /* Note that we could set accepted to false if we wanted to for some */
     /*  reason- such as bad serial numbers.... */
     
-    SetNetscriptStatus (false); // Unless told otherwise, we don't expect a netscript
+	if (!use_dedicated_server) SetNetscriptStatus (false); // Unless told otherwise, we don't expect a netscript
 
 	assert(localPlayerIndex != NONE);
     
@@ -1642,7 +1644,7 @@ bool NetGather(
 	{
 		open_progress_dialog(_connecting_to_dedicated_server);
 
-		if (!NetConnectDedicatedServer(resuming_game))
+		if (!NetConnectRemoteHub())
 		{
 			close_progress_dialog();
 			alert_user(infoError, strNETWORK_ERRORS, netWarnDedicatedServerNotReachable, -1);
@@ -1666,7 +1668,7 @@ bool NetGather(
 	return true;
 }
 
-bool NetConnectDedicatedServer(bool resuming_game)
+bool NetConnectRemoteHub()
 {
 	/* IP & ports of available dedicated servers should be sent by the metaserver */
 	dedicated_server = std::make_unique<CommunicationsChannel>();
@@ -1677,18 +1679,43 @@ bool NetConnectDedicatedServer(bool resuming_game)
 	TopologyMessage topologyMessage(topology);
 	dedicated_server->enqueueOutgoingMessage(topologyMessage);
 
-	entry_point entry = { topology->game_data.level_number };
-	auto map = (unsigned char*)get_map_for_net_transfer(&entry);
-	auto length = get_net_map_data_length(map);
-	auto error = NetDistributeGameDataToAllPlayers(map, length, !resuming_game, dedicated_server.get());
+	byte* wad = nullptr;
+	int wad_length;
 
-	if (error || !dedicated_server->receiveSpecificMessage<DedicatedServerReadyMessage>())
+	if (resuming_saved_game)
+	{
+		assert(resumed_wad_data_for_remote_hub && resumed_wad_size_for_remote_hub);
+		wad = resumed_wad_data_for_remote_hub;
+		wad_length = resumed_wad_size_for_remote_hub;
+	}
+	else
+	{
+		entry_point entry = { topology->game_data.level_number };
+		wad = (byte*)get_map_for_net_transfer(&entry);
+		assert(wad);
+		wad_length = get_net_map_data_length(wad);
+	}
+
+	auto error = NetDistributeGameDataToAllPlayers(wad, wad_length, !resuming_saved_game, dedicated_server.get());
+
+	if (resuming_saved_game)
+		NetSetResumedGameWadForRemoteHub(nullptr, 0);
+	else
+		free(wad);
+
+	if (!dedicated_server->receiveSpecificMessage<DedicatedServerReadyMessage>())
 	{
 		dedicated_server->disconnect();
 		return false;
 	}
 
 	return true;
+}
+
+void NetSetResumedGameWadForRemoteHub(byte* resumed_wad_data, int length)
+{
+	resumed_wad_data_for_remote_hub = resumed_wad_data;
+	resumed_wad_size_for_remote_hub = length;
 }
 
 void NetCancelGather(
@@ -1713,7 +1740,7 @@ bool NetStart(
         
         // ZZZ: do that sorting in a new game only - in a resume game, the ordering is significant
         // (it's how netplayers will line up with existing saved-game players).
-	
+
         if(!resuming_saved_game)
         {
                 if (topology->player_count > 2)
@@ -1723,7 +1750,18 @@ bool NetStart(
         
                 NetUpdateTopology();
         }
+#if NETWORK_SERVER
+		else
+		{
+			player_start_data theStarts[MAXIMUM_NUMBER_OF_PLAYERS];
+			short theNumberOfStarts;
+			construct_multiplayer_starts(theStarts, &theNumberOfStarts);
+			match_starts_with_existing_players(theStarts, &theNumberOfStarts);
+			NetSetupTopologyFromStarts(theStarts, theNumberOfStarts);
+		}
+#endif
 
+	//resuming game is always false for standalone hub
 	NetDistributeTopology(resuming_saved_game ? tagRESUME_GAME : tagSTART_GAME);
 
 	return true;
@@ -2072,6 +2110,112 @@ static bool NetSetSelfSend(
 	return false;
 }
 
+void construct_multiplayer_starts(player_start_data* outStartArray, short* outStartCount)
+{
+	int number_of_players = NetGetNumberOfPlayers();
+
+	if (outStartCount != NULL)
+	{
+		*outStartCount = number_of_players;
+	}
+
+	for (int player_index = 0; player_index < number_of_players; ++player_index)
+	{
+		player_info* player_information = (player_info*)NetGetPlayerData(player_index);
+		outStartArray[player_index].team = player_information->team;
+		outStartArray[player_index].color = player_information->color;
+		outStartArray[player_index].identifier = NetGetPlayerIdentifier(player_index);
+		strncpy(outStartArray[player_index].name, player_information->name, MAXIMUM_PLAYER_START_NAME_LENGTH + 1);
+	}
+}
+
+// This should be safe to use whether starting or resuming and whether single-player or multiplayer.
+void match_starts_with_existing_players(player_start_data* ioStartArray, short* ioStartCount)
+{
+	// This code could be smarter, but it doesn't run very often, doesn't get big data sets, etc.
+	// so I'm not going to worry about it.
+
+	bool startAssigned[MAXIMUM_NUMBER_OF_PLAYERS];
+	int8 startAssignedToPlayer[MAXIMUM_NUMBER_OF_PLAYERS];
+	for (int i = 0; i < MAXIMUM_NUMBER_OF_PLAYERS; i++)
+	{
+		startAssigned[i] = false;
+		startAssignedToPlayer[i] = NONE;
+	}
+
+	// First, match starts to players by name.
+	for (int s = 0; s < *ioStartCount; s++)
+	{
+		for (int p = 0; p < dynamic_world->player_count; p++)
+		{
+			if (startAssignedToPlayer[p] == NONE)
+			{
+				if (strcmp(ioStartArray[s].name, get_player_data(p)->name) == 0)
+				{
+					startAssignedToPlayer[p] = s;
+					startAssigned[s] = true;
+					break;
+				}
+			}
+		}
+	}
+
+	// Match remaining starts to remaining players arbitrarily.
+	for (int s = 0; s < *ioStartCount; s++)
+	{
+		if (!startAssigned[s])
+		{
+			for (int p = 0; p < dynamic_world->player_count; p++)
+			{
+				if (startAssignedToPlayer[p] == NONE)
+				{
+					startAssignedToPlayer[p] = s;
+					startAssigned[s] = true;
+					break;
+				}
+			}
+		}
+	}
+
+	// Create new starts for any players not covered.
+	int p = 0;
+	while (*ioStartCount < dynamic_world->player_count)
+	{
+		if (startAssignedToPlayer[p] == NONE)
+		{
+			player_data* thePlayer = get_player_data(p);
+			ioStartArray[*ioStartCount].team = thePlayer->team;
+			ioStartArray[*ioStartCount].color = thePlayer->color;
+			ioStartArray[*ioStartCount].identifier = NONE;
+			strncpy(ioStartArray[*ioStartCount].name, thePlayer->name, MAXIMUM_PLAYER_START_NAME_LENGTH + 1);
+			startAssignedToPlayer[p] = *ioStartCount;
+			startAssigned[*ioStartCount] = true;
+			(*ioStartCount)++;
+		}
+
+		p++;
+	}
+
+	// Assign remaining starts to players that don't exist yet
+	p = dynamic_world->player_count;
+	for (int s = 0; s < *ioStartCount; s++)
+	{
+		if (!startAssigned[s])
+		{
+			startAssignedToPlayer[p] = s;
+			startAssigned[s] = true;
+			p++;
+		}
+	}
+
+	// Reorder starts to match players - this is particularly unclever
+	player_start_data theOriginalStarts[MAXIMUM_NUMBER_OF_PLAYERS];
+	memcpy(theOriginalStarts, ioStartArray, sizeof(theOriginalStarts));
+	for (p = 0; p < *ioStartCount; p++)
+	{
+		ioStartArray[p] = theOriginalStarts[startAssignedToPlayer[p]];
+	}
+}
 
 
 /* ------ this needs to let the gatherer keep going if there was an error.. */
@@ -2084,6 +2228,7 @@ bool NetChangeMap(
 	byte   *wad= NULL;
 	int32   length;
 	bool success= true;
+	bool do_physics = true;
 
 	/* If the guy that was the server died, and we are trying to change levels, we lose */
         // ZZZ: if we used the parent_wad_checksum stuff to locate the containing Map file,
@@ -2096,15 +2241,37 @@ bool NetChangeMap(
 	  if(localPlayerIndex==sServerPlayerIndex) {
 
 #if NETWORK_SERVER
-		  length = NetworkServer::Instance()->GetMapData(&wad);
+
+		 // success = NetworkServer::Instance()->GetGameDataFromGatherer();
+		  success = true;
+		  if (true)
+		  {
+			  length = NetworkServer::Instance()->GetMapData(&wad);
+
+			  byte* physics = nullptr;
+			  do_physics = NetworkServer::Instance()->GetPhysicsData(&physics);
+
+		  }
+
 #else
 		  wad = (unsigned char*)get_map_for_net_transfer(entry);
 		  assert(wad);
 		  length = get_net_map_data_length(wad);
+		  do_physics = true;
 #endif
+		  if (success) NetDistributeGameDataToAllPlayers(wad, length, do_physics);
 
-	    NetDistributeGameDataToAllPlayers(wad, length, true);
 	  } else { // wait for de damn map.
+
+		 /* if (use_dedicated_server) //if the gatherer is using a remote hub, it has to send it to the hub first
+		  {
+			  wad = (unsigned char*)get_map_for_net_transfer(entry);
+			  assert(wad);
+			  length = get_net_map_data_length(wad);
+			  NetDistributeGameDataToAllPlayers(wad, length, true, connection_to_server);
+			  free(wad);
+		  }*/
+
 	      wad = NetReceiveGameData(true);
 	      if(!wad) {
 		alert_user(infoError, strNETWORK_ERRORS, netErrCouldntReceiveMap, 0);
@@ -2113,12 +2280,16 @@ bool NetChangeMap(
 	      }
 	  }
 	  
+#if NETWORK_SERVER
+	  free(wad);
+#else
 	  /* Now load the level.. */
 	  if (wad)
 	    {
 	      /* Note that this frees the wad as well!! */
 	      process_net_map_data(wad);
 	    }
+#endif
 	}
 	
 	return success;
@@ -2259,15 +2430,16 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 		}
 	}
 
-	if (do_netscript)
-	{
 #if NETWORK_SERVER
-		lua_length = NetworkServer::Instance()->GetLuaData(&lua_buffer);
+	lua_length = NetworkServer::Instance()->GetLuaData(&lua_buffer);
+	SetNetscriptStatus(lua_length);
 #else
-		lua_length = deferred_script_length;
-		lua_buffer = deferred_script_data;
+	lua_length = deferred_script_length;
+	lua_buffer = deferred_script_data;
 #endif
 
+	if (do_netscript)
+	{
 		if (zipCapableChannels.size())
 		{
 			ZippedLuaMessage zippedLuaMessage(lua_buffer, lua_length);
@@ -2288,11 +2460,14 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 	}
 
 	CommunicationsChannel::multipleFlushOutgoingMessages(channels, false, 30000, 30000);
-	
+
 	if (!dedicated_server)
 	{
 		for (playerIndex = 0; playerIndex < topology->player_count; playerIndex++) {
-			if (playerIndex != localPlayerIndex) {
+
+			NetPlayer player = topology->players[playerIndex];
+
+			if (playerIndex != localPlayerIndex && !player.net_dead && player.identifier != NONE) {
 				connections_to_clients[topology->players[playerIndex].stream_id]->state = Client::_ingame;
 			}
 		}

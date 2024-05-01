@@ -2,7 +2,7 @@
 
 NetworkServer* NetworkServer::_instance = nullptr;
 
-bool NetworkServer::InstantiateNetworkServer(short port)
+bool NetworkServer::InitNetworkServer(short port)
 {
 	if (_instance) return true;
 	_instance = new NetworkServer(port);
@@ -32,7 +32,9 @@ bool NetworkServer::SetupGathererGame(bool& gathering_done)
 		NetSetDefaultInflater(_gatherer.get());
 	}
 
-	if (!GetGameDataFromGatherer()) return Reset();
+	_topology_message = std::unique_ptr<TopologyMessage>(static_cast<TopologyMessage*>(_gatherer->receiveSpecificMessage<TopologyMessage>())); //yaaay
+
+	if (!_topology_message || !GetGameDataFromGatherer()) return Reset();
 
 	SetNetscriptStatus(_lua_message.get());
 
@@ -42,6 +44,8 @@ bool NetworkServer::SetupGathererGame(bool& gathering_done)
 
 	_gatherer_client = std::weak_ptr<CommunicationsChannel>(_gatherer);
 	_gatherer.reset();
+
+	_start_check_timeout_ms = machine_tick_count();
 
 	bool success = NetworkGatherCore(&_topology_message->topology()->game_data, &_topology_message->topology()->players->player_data, false, !_physics_message, false, false);
 
@@ -56,12 +60,12 @@ bool NetworkServer::Reset()
 	auto port = _instance->_port;
 	delete _instance;
 	_instance = nullptr;
-	return InstantiateNetworkServer(port);
+	return InitNetworkServer(port);
 }
 
 bool NetworkServer::GatherJoiners()
 {
-	while (!_gatherer_client.expired() && !_start_game_signal)
+	while (!_gatherer_client.expired() && !_start_game_signal && machine_tick_count() - _start_check_timeout_ms < _gathering_timeout_ms)
 	{
 		//MetaserverClient::pumpAll();
 		GathererAvailableAnnouncer::pump();
@@ -85,31 +89,31 @@ bool NetworkServer::SendMessageToGatherer(const Message& message)
 
 bool NetworkServer::GetGameDataFromGatherer()
 {
-	while (auto message = _gatherer->receiveMessage())
+	if (auto client = _gatherer ? _gatherer : _gatherer_client.lock())
 	{
-		switch (message->type())
+		while (auto message = client->receiveMessage())
 		{
-			case kTOPOLOGY_MESSAGE:
-				_topology_message = std::unique_ptr<TopologyMessage>(static_cast<TopologyMessage*>(message));
-				break;
-			case kLUA_MESSAGE:
-			case kZIPPED_LUA_MESSAGE:
-				_lua_message = std::unique_ptr<LuaMessage>(static_cast<LuaMessage*>(message));
-				break;
-			case kPHYSICS_MESSAGE:
-			case kZIPPED_PHYSICS_MESSAGE:
-				_physics_message = std::unique_ptr<PhysicsMessage>(static_cast<PhysicsMessage*>(message));
-				break;
-			case kMAP_MESSAGE:
-			case kZIPPED_MAP_MESSAGE:
-				_map_message = std::unique_ptr<MapMessage>(static_cast<MapMessage*>(message));
-				break;
-			case kEND_GAME_DATA_MESSAGE:
-				delete message;
-				return _topology_message && _map_message;
-			default:
-				delete message;
-				break;
+			switch (message->type())
+			{
+				case kLUA_MESSAGE:
+				case kZIPPED_LUA_MESSAGE:
+					_lua_message = std::unique_ptr<LuaMessage>(static_cast<LuaMessage*>(message));
+					break;
+				case kPHYSICS_MESSAGE:
+				case kZIPPED_PHYSICS_MESSAGE:
+					_physics_message = std::unique_ptr<PhysicsMessage>(static_cast<PhysicsMessage*>(message));
+					break;
+				case kMAP_MESSAGE:
+				case kZIPPED_MAP_MESSAGE:
+					_map_message = std::unique_ptr<MapMessage>(static_cast<MapMessage*>(message));
+					break;
+				case kEND_GAME_DATA_MESSAGE:
+					delete message;
+					return _map_message != nullptr;
+				default:
+					delete message;
+					break;
+			}
 		}
 	}
 

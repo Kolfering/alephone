@@ -156,7 +156,9 @@ StarGameProtocol::UnSync(bool inGraceful, int32 inSmallestPostgameTick)
 {
         if(*sNetStatePtr == netStartingUp || *sNetStatePtr == netActive)
         {
+#ifndef NETWORK_SERVER
                 spoke_cleanup(inGraceful);
+#endif
                 if(sHubIsLocal)
                         hub_cleanup(inGraceful, inSmallestPostgameTick);
 

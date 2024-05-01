@@ -653,10 +653,38 @@ short get_level_number_from_user(void)
 	return level;
 }
 
-#ifdef NETWORK_SERVER
-static bool RemoteHubHostGame()
+#if NETWORK_SERVER
+static bool InitGameForStandaloneHub(void)
 {
-	bool success = NetworkServer::InstantiateNetworkServer(4225);
+	initialize_map_for_new_level();
+
+	byte* physics = nullptr;
+	int physics_length = NetworkServer::Instance()->GetPhysicsData(&physics);
+	if (physics) return true; //don't need to init further
+
+	byte* wad = nullptr;
+	int wad_length = NetworkServer::Instance()->GetMapData(&wad);
+	if (!wad) return false; //something is wrong
+
+	auto wad_copy = new byte[wad_length];
+	std::memcpy(wad_copy, wad, wad_length);
+
+	wad_header header;
+	auto wad_data = inflate_flat_data(wad_copy, &header);
+	if (!wad_data) return false;
+
+	get_dynamic_data_from_wad(wad_data, dynamic_world);
+	free_wad(wad_data);
+
+	return true;
+}
+#endif // NETWORK_SERVER
+
+#ifdef NETWORK_SERVER
+static bool StandaloneHubHostGame(bool& game_has_started)
+{
+	game_has_started = false;
+	bool success = NetworkServer::InitNetworkServer(4225);
 
 	if (!success)
 	{
@@ -675,17 +703,15 @@ static bool RemoteHubHostGame()
 
 	if (!gathering_done) return true;
 
-	if (!NetStart() || !NetChangeMap(nullptr) || !NetSync())
+	if (InitGameForStandaloneHub() && NetStart() && NetChangeMap(nullptr) && NetSync())
 	{
-		set_game_state(_network_server_waiting_for_gatherer);
-		return NetworkServer::Reset();
+		game_has_started = true;
+		return true;
 	}
 
-	set_game_state(_network_server_game_in_progress);
-	return true;
+	return NetworkServer::Reset();
 }
 #endif
-
 
 const uint32 TICKS_BETWEEN_EVENT_POLL = 16; // 60 Hz
 void main_event_loop(void)
@@ -731,8 +757,16 @@ void main_event_loop(void)
 
 #ifdef NETWORK_SERVER
 			case _network_server_waiting_for_gatherer:
-				if (!RemoteHubHostGame()) set_game_state(_quit_game);
+			{
+				bool game_has_started;
+
+				if (!StandaloneHubHostGame(game_has_started))
+					set_game_state(_quit_game);
+				else if (game_has_started)
+					set_game_state(_network_server_game_in_progress);
+
 				break;
+			}
 
 			case _network_server_game_in_progress:
 				NetProcessMessagesInGame();

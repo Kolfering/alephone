@@ -305,8 +305,6 @@ void TopologyMessage::reallyDeflateTo(AOStream& outputStream) const {
   outputStream << mTopology.game_data.kill_limit;
   outputStream << mTopology.game_data.game_options;
   outputStream << mTopology.game_data.difficulty_level;
-  outputStream << mTopology.game_data.server_is_playing;
-  outputStream << mTopology.game_data.allow_mic;
   outputStream << mTopology.game_data.cheat_flags;
   outputStream << mTopology.game_data.level_number;
   write_string(outputStream, mTopology.game_data.level_name);
@@ -335,8 +333,6 @@ bool TopologyMessage::reallyInflateFrom(AIStream& inputStream) {
   inputStream >> mTopology.game_data.kill_limit;
   inputStream >> mTopology.game_data.game_options;
   inputStream >> mTopology.game_data.difficulty_level;
-  inputStream >> mTopology.game_data.server_is_playing;
-  inputStream >> mTopology.game_data.allow_mic;
   inputStream >> mTopology.game_data.cheat_flags;
   inputStream >> mTopology.game_data.level_number;
   read_string(inputStream, mTopology.game_data.level_name, MAX_LEVEL_NAME_LENGTH - 1);

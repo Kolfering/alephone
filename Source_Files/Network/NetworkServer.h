@@ -17,13 +17,15 @@ private:
 	int _port;
 	bool _start_game_signal = false;
 	bool _gatherer_joined_as_client = false;
+	int _start_check_timeout_ms = 0;
+	static constexpr int _gathering_timeout_ms = 20 * 60 * 1000;
 	NetworkServer(short port);
 	~NetworkServer();
-	bool GetGameDataFromGatherer();
 public:
+	bool GetGameDataFromGatherer();
 	bool GatherJoiners();
 	bool SetupGathererGame(bool& gathering_done);
-	static bool InstantiateNetworkServer(short port);
+	static bool InitNetworkServer(short port);
 	static NetworkServer* Instance() { return _instance; }
 	static bool Reset();
 	CommunicationsChannel* GetGathererChannel() const { return _gatherer ? _gatherer.get() : _gatherer_client.lock().get(); }

@@ -415,7 +415,7 @@ static const char* sStringSetNumber143[] = {
     "Attempting to open router ports...",
     "Closing router ports...",
     "Checking for updates...",
-    "Sending environment information to the server..."
+    "Connecting to the remote hub server..."
 };
 
 

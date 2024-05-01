@@ -381,6 +381,7 @@ void GatherDialog::idle ()
 				break;
 
 			case netStartingUp:
+			case netStartingResumeGame:
 				Stop(true);
 				break;
 			
@@ -1287,7 +1288,6 @@ bool SetupNetgameDialog::SetupNetworkGameByRunning (
 		player_information->color = player_preferences->color;
 		player_information->team = player_preferences->team;
 
-		game_information->server_is_playing = true;
 		game_information->net_game_type = active_network_preferences->game_type;
 		
 		game_information->game_options = active_network_preferences->game_options;
@@ -1315,7 +1315,6 @@ bool SetupNetgameDialog::SetupNetworkGameByRunning (
 		strncpy (game_information->level_name, entry.level_name, MAX_LEVEL_NAME_LENGTH+1);
 		game_information->parent_checksum = read_wad_file_checksum(get_map_file());
 		game_information->difficulty_level = active_network_preferences->difficulty_level;
-		game_information->allow_mic = false;
 
 		int updates_per_packet = 1;
 		int update_latency = 0;

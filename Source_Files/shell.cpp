@@ -91,6 +91,8 @@
 #include <SDL2/SDL_net.h>
 #endif
 
+#include "StandaloneHub.h"
+
 #ifdef HAVE_PNG
 #include "IMG_savepng.h"
 #endif
@@ -251,6 +253,8 @@ void initialize_application(void)
 	SDL_setenv("SDL_AUDIODRIVER", "directsound", 0);
 #endif
 
+#ifndef A1_NETWORK_STANDALONE_HUB
+
 	// Initialize SDL
 	int retval = SDL_Init(SDL_INIT_VIDEO |
 						  (shell_options.nosound ? 0 : SDL_INIT_AUDIO) |
@@ -294,22 +298,27 @@ void initialize_application(void)
 		SDL_EventState(SDL_DROPFILE, SDL_DISABLE);
 	}
 
+#endif // !A1_NETWORK_STANDALONE_HUB
+
 	// Find data directories, construct search path
 	InitDefaultStringSets();
 
+#ifndef A1_NETWORK_STANDALONE_HUB
 #ifndef SCENARIO_IS_BUNDLED
 	default_data_dir = get_data_path(kPathDefaultData);
 #endif
-	
 	local_data_dir = get_data_path(kPathLocalData);
-	log_dir = get_data_path(kPathLogs);
 	preferences_dir = get_data_path(kPathPreferences);
 	saved_games_dir = get_data_path(kPathSavedGames);
 	quick_saves_dir = get_data_path(kPathQuickSaves);
 	image_cache_dir = get_data_path(kPathImageCache);
 	recordings_dir = get_data_path(kPathRecordings);
 	screenshots_dir = get_data_path(kPathScreenshots);
+#endif
+
+	log_dir = get_data_path(kPathLogs);
 	
+#ifndef A1_NETWORK_STANDALONE_HUB
 	if (!get_data_path(kPathBundleData).empty())
 	{
 		bundle_data_dir = get_data_path(kPathBundleData);
@@ -366,10 +375,13 @@ void initialize_application(void)
 	initialize_resources();
 
 	init_physics_wad_data();
+
 	initialize_fonts(false);
+#endif
 
 	load_film_profile(FILM_PROFILE_DEFAULT, false);
 
+#ifndef A1_NETWORK_STANDALONE_HUB
 	// Parse MML files
 	LoadBaseMMLScripts(true);
 
@@ -378,6 +390,7 @@ void initialize_application(void)
 		throw std::runtime_error("Can't find required text strings (missing MML?)");
 	}
 	
+
 	// Check for presence of files (one last chance to change data_search_path)
 	if (!have_default_files()) {
 		char chosen_dir[256];
@@ -398,13 +411,17 @@ void initialize_application(void)
 
 	initialize_fonts(true);
 	Plugins::instance()->enumerate();			
-	
+
 	preferences_dir.CreateDirectory();
 	if (!get_data_path(kPathLegacyPreferences).empty())
 		transition_preferences(DirectorySpecifier(get_data_path(kPathLegacyPreferences)));
 
+#endif
+
 	// Load preferences
 	initialize_preferences();
+
+#ifndef A1_NETWORK_STANDALONE_HUB
 
 	local_data_dir.CreateDirectory();
 	saved_games_dir.CreateDirectory();
@@ -421,7 +438,7 @@ void initialize_application(void)
 	image_cache_dir.CreateDirectory();
 	recordings_dir.CreateDirectory();
 	screenshots_dir.CreateDirectory();
-	
+
 	WadImageCache::instance()->initialize_cache();
 
 #ifndef HAVE_OPENGL
@@ -436,7 +453,7 @@ void initialize_application(void)
 	write_preferences();
 
 	Plugins::instance()->load_mml(true);
-
+#endif
 //	SDL_WM_SetCaption(application_name, application_name);
 
 // #if defined(HAVE_SDL_IMAGE) && !(defined(__APPLE__) && defined(__MACH__))
@@ -453,6 +470,7 @@ void initialize_application(void)
 	}
 #endif
 
+#ifndef A1_NETWORK_STANDALONE_HUB
 	if (TTF_Init() < 0)
 	{
 		std::ostringstream oss;
@@ -460,7 +478,8 @@ void initialize_application(void)
 
 		throw std::runtime_error(oss.str());
 	}
-	
+#endif
+
 	HTTPClient::Init();
 
 #ifdef HAVE_STEAM
@@ -474,37 +493,46 @@ void initialize_application(void)
 	// Initialize everything
 	mytm_initialize();
 //	initialize_fonts();
+#ifndef A1_NETWORK_STANDALONE_HUB
 	SoundManager::instance()->Initialize(*sound_preferences);
 	initialize_marathon_music_handler();
-	initialize_keyboard_controller();
 	initialize_joystick();
 	initialize_gamma();
 	alephone::Screen::instance()->Initialize(&graphics_preferences->screen_mode);
-	initialize_marathon();
 	initialize_screen_drawing();
 	initialize_dialogs();
+	initialize_fades();
+#endif
+	initialize_keyboard_controller();
+	initialize_marathon();
+#ifndef A1_NETWORK_STANDALONE_HUB
 	initialize_terminal_manager();
 	initialize_shape_handler();
-	initialize_fades();
 	initialize_images_manager();
 	load_environment_from_preferences();
+#endif
 	initialize_game_state();
 }
 
 void shutdown_application(void)
 {
+#ifndef A1_NETWORK_STANDALONE_HUB
 	WadImageCache::instance()->save_cache();
 
 	shutdown_dialogs();
-        
+#endif
+
 #if defined(HAVE_SDL_IMAGE) && (SDL_IMAGE_PATCHLEVEL >= 8)
 	IMG_Quit();
 #endif
 #if !defined(DISABLE_NETWORKING)
 	SDLNet_Quit();
 #endif
+
+#ifndef A1_NETWORK_STANDALONE_HUB
 	TTF_Quit();
 	SDL_Quit();
+#endif
 
 #ifdef HAVE_STEAM
 	STEAMSHIM_deinit();
@@ -620,6 +648,103 @@ short get_level_number_from_user(void)
 	return level;
 }
 
+#ifdef A1_NETWORK_STANDALONE_HUB
+
+extern bool hub_is_active();
+
+static bool InitGameForStandaloneHub(void)
+{
+	initialize_map_for_new_game();
+
+	byte* physics = nullptr;
+	int physics_length = StandaloneHub::Instance()->GetPhysicsData(&physics);
+	if (physics) return true; //don't need to init further
+
+	byte* wad = nullptr;
+	int wad_length = StandaloneHub::Instance()->GetMapData(&wad);
+	if (!wad) return false; //something is wrong
+
+	auto wad_copy = new byte[wad_length];
+	std::memcpy(wad_copy, wad, wad_length);
+
+	wad_header header;
+	auto wad_data = inflate_flat_data(wad_copy, &header);
+	if (!wad_data) return false;
+
+	bool success = get_dynamic_data_from_wad(wad_data, dynamic_world);
+	free_wad(wad_data);
+
+	return success;
+}
+
+static bool StandaloneHubGameInProgress(bool& game_is_done)
+{
+	game_is_done = false;
+
+	if (hub_is_active() && !StandaloneHub::Instance()->HasGameEnded())
+	{
+		NetProcessMessagesInGame();
+		return true;
+	}
+
+	if (!NetUnSync()) return false; //should never happen
+
+	bool next_game = false;
+
+	if (StandaloneHub::Instance()->GetGameDataFromGatherer())
+	{
+		initialize_map_for_new_level();
+		next_game = NetChangeMap(nullptr) && NetSync(); //don't stop the server if it fails here
+	}
+
+	if (!next_game)
+	{
+		game_is_done = true;
+		return StandaloneHub::Reset();
+	}
+
+	StandaloneHub::Instance()->SetGameEnded(false);
+	return true;
+}
+
+static bool StandaloneHubHostGame(bool& game_has_started)
+{
+	game_has_started = false;
+
+	if (!StandaloneHub::Init(GAME_PORT))
+	{
+		logError("Error while trying to instantiate Aleph One remote hub");
+		return false;
+	}
+
+	if (!StandaloneHub::Instance()->WaitForGatherer()) return true;
+
+	if (!StandaloneHub::Instance()->GetGameDataFromGatherer() || !InitGameForStandaloneHub())
+	{
+		return StandaloneHub::Reset();
+	}
+
+	bool gathering_done;
+	bool success = StandaloneHub::Instance()->SetupGathererGame(gathering_done);
+
+	if (!success)
+	{
+		logError("Error while trying to gather game on Aleph One remote hub");
+		return false;
+	}
+
+	if (!gathering_done) return true;
+
+	if (NetStart() && NetChangeMap(nullptr) && NetSync())
+	{
+		game_has_started = true;
+		return true;
+	}
+
+	return StandaloneHub::Reset();
+}
+#endif // A1_NETWORK_STANDALONE_HUB
+
 const uint32 TICKS_BETWEEN_EVENT_POLL = 16; // 60 Hz
 void main_event_loop(void)
 {
@@ -661,6 +786,32 @@ void main_event_loop(void)
 			case _revert_game:
 				yield_time = poll_event = true;
 				break;
+
+#ifdef A1_NETWORK_STANDALONE_HUB
+			case _standalone_hub_waiting_for_gatherer:
+			{
+				bool game_has_started;
+
+				if (!StandaloneHubHostGame(game_has_started))
+					set_game_state(_quit_game);
+				else if (game_has_started)
+					set_game_state(_standalone_hub_game_in_progress);
+
+				break;
+			}
+
+			case _standalone_hub_game_in_progress:
+			{
+				bool game_is_done;
+
+				if (!StandaloneHubGameInProgress(game_is_done))
+					set_game_state(_quit_game);
+				else if (game_is_done)
+					set_game_state(_standalone_hub_waiting_for_gatherer);
+
+				break;
+			}
+#endif
 		}
 
 		if (poll_event) {
@@ -699,6 +850,9 @@ void main_event_loop(void)
 #endif
 		}
 
+#ifdef A1_NETWORK_STANDALONE_HUB
+		sleep_for_machine_ticks(1);
+#else
 		execute_timer_tasks(machine_tick_count());
 		idle_game_state(machine_tick_count());
 
@@ -718,6 +872,7 @@ void main_event_loop(void)
 				sleep_for_machine_ticks(1);
 			}
 		}
+
 		else if (game_state != _game_in_progress)
 		{
 			static auto last_redraw = 0;
@@ -727,6 +882,7 @@ void main_event_loop(void)
 				last_redraw = machine_tick_count();
 			}
 		}
+#endif
 	}
 }
 

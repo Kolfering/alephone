@@ -79,6 +79,10 @@ struct ShellOptionsString : public ShellOptionsOption {
 	std::string& string;
 };
 
+struct ShellOptionsNumber : public ShellOptionsOption {
+	int& number;
+};
+
 static std::string ignore;
 
 static const std::vector<ShellOptionsCommand> shell_options_commands {
@@ -103,6 +107,12 @@ static const std::vector<ShellOptionsString> shell_options_strings {
 	{"o", "output", "With -e, output to [file] and exit on quit", shell_options.output},
 	{"l", "replay-directory", "Directory with replays to load", shell_options.replay_directory},
 	{"NSDocumentRevisionsDebugMode", "", "", ignore} // annoying Xcode argument
+};
+
+static const std::vector<ShellOptionsNumber> shell_options_numbers {
+#ifdef A1_NETWORK_STANDALONE_HUB
+	{"p", "port", "Listening port for Alephone Standalone Hub", shell_options.standalone_hub_port},
+#endif
 };
 
 std::unordered_map<int, bool> ShellOptions::parse(int argc, char** argv, bool ignore_unknown_args)
@@ -173,6 +183,37 @@ std::unordered_map<int, bool> ShellOptions::parse(int argc, char** argv, bool ig
 			}
 		}
 
+		for (auto option : shell_options_numbers)
+		{
+			if (option.match(arg))
+			{
+				if (i < args.size() - 1 && args[i + 1][0] != '-')
+				{
+					try
+					{
+						option.number = std::stoi(args[i + 1]);
+						found = true;
+						results.insert({ i++ + 1, true });
+					}
+					catch (...)
+					{
+						printf("%s is not a valid value for argument %s (number expected)\n", args[i + 1].c_str(), arg.c_str());
+					}
+				}
+				else
+				{
+					logFatal("%s requires an additional argument", arg.c_str());
+					printf("%s requires an additional argument\n", arg.c_str());
+				}
+
+				if (!found)
+				{
+					print_usage();
+					exit(1);
+				}
+			}
+		}
+
 		if (!found)
 		{
 			if (arg[0] != '-')
@@ -236,6 +277,11 @@ void print_usage()
 	}
 
 	for (auto option : shell_options_strings)
+	{
+		oss << option;
+	}
+
+	for (auto option : shell_options_numbers)
 	{
 		oss << option;
 	}

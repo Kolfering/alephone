@@ -211,6 +211,7 @@ check_send_packet_to_hub()
 void
 spoke_initialize(const NetAddrBlock& inHubAddress, int32 inFirstTick, size_t inNumberOfPlayers, WritableTickBasedActionQueue* const inPlayerQueues[], bool inPlayerConnected[], size_t inLocalPlayerIndex, bool inHubIsLocal)
 {
+        assert(inLocalPlayerIndex != NONE);
         assert(inNumberOfPlayers >= 1);
         assert(inLocalPlayerIndex < inNumberOfPlayers);
         assert(inPlayerQueues[inLocalPlayerIndex] != NULL);
@@ -354,7 +355,7 @@ spoke_distribute_lossy_streaming_bytes_to_everyone(int16 inDistributionType, byt
 			if (onlySendToTeam)
 			{
 				player_info* player = (player_info *)NetGetPlayerData(i);
-				if (player->team == local_team) 
+				if (player->team == local_team)
 					theDestinations |= (((uint32)1) << i);
 				
 			}

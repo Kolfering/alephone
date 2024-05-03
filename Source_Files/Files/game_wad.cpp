@@ -283,7 +283,8 @@ dynamic_data get_dynamic_data_from_save(FileSpecifier& File)
 			auto wad = read_indexed_wad_from_file(MapFile, &header, 0, true);
 			if (wad)
 			{
-				get_dynamic_data_from_wad(wad, &dynamic_data_return);
+				bool result = get_dynamic_data_from_wad(wad, &dynamic_data_return);
+				assert(result);
 				free_wad(wad);
 			}
 		}
@@ -1855,7 +1856,8 @@ bool process_map_wad(
 		unpack_player_data(data,players,count);
 		team_damage_from_player_data();
 		
-		get_dynamic_data_from_wad(wad, dynamic_world);
+		bool result = get_dynamic_data_from_wad(wad, dynamic_world);
+		assert(result);
 		
 		data= (uint8 *)extract_type_from_wad(wad, OBJECT_STRUCTURE_TAG, &data_length);
 		count= data_length/SIZEOF_object_data;
@@ -1947,12 +1949,11 @@ bool process_map_wad(
 	return true;
 }
 
-void get_dynamic_data_from_wad(wad_data* wad, dynamic_data* dest)
+bool get_dynamic_data_from_wad(wad_data* wad, dynamic_data* dest)
 {
 	size_t data_length;
 	uint8* data = (uint8*)extract_type_from_wad(wad, DYNAMIC_STRUCTURE_TAG, &data_length);
-	assert(data_length == SIZEOF_dynamic_data);
-	unpack_dynamic_data(data, dest, 1);
+	return data && data_length == SIZEOF_dynamic_data ? unpack_dynamic_data(data, dest, 1) : false;
 }
 
 static void allocate_map_structure_for_map(

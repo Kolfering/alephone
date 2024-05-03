@@ -238,6 +238,8 @@ enum { /* states. */
 	_change_level,
 	_begin_display_of_epilogue,
 	_displaying_network_game_dialogs,
+	_standalone_hub_waiting_for_gatherer,
+	_standalone_hub_game_in_progress,
 	NUMBER_OF_GAME_STATES
 };
 
@@ -401,7 +403,7 @@ enum {	// Results for network_join
         kNetworkJoinedResumeGame
 };
 
-bool network_gather(bool inResumingGame);
+bool network_gather(bool inResumingGame, bool& outUseRemoteHub);
 int network_join(void);
 
 /* ---------- prototypes/PHYSICS.C */

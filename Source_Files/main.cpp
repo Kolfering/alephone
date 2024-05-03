@@ -35,6 +35,14 @@ int main(int argc, char** argv)
 
 	shell_options.parse(argc, argv);
 
+#ifdef A1_NETWORK_STANDALONE_HUB
+	if (!shell_options.standalone_hub_port)
+	{
+		printf("Invalid or missing argument \"port\" for network standalone hub");
+		return 1;
+	}
+#endif
+	
 	auto code = 0;
 
 	try {

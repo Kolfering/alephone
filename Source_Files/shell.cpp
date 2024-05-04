@@ -92,7 +92,7 @@
 #include "network_private.h"
 #endif
 
-#include "NetworkServer.h"
+#include "StandaloneHub.h"
 
 #ifdef HAVE_PNG
 #include "IMG_savepng.h"
@@ -262,7 +262,7 @@ void initialize_application(void)
 	SDL_setenv("SDL_AUDIODRIVER", "directsound", 0);
 #endif
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 
 	// Initialize SDL
 	int retval = SDL_Init(SDL_INIT_VIDEO |
@@ -307,12 +307,12 @@ void initialize_application(void)
 		SDL_EventState(SDL_DROPFILE, SDL_DISABLE);
 	}
 
-#endif // ! NETWORK_SERVER
+#endif // !A1_NETWORK_STANDALONE_HUB
 
 	// Find data directories, construct search path
 	InitDefaultStringSets();
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 #ifndef SCENARIO_IS_BUNDLED
 	default_data_dir = get_data_path(kPathDefaultData);
 #endif
@@ -327,7 +327,7 @@ void initialize_application(void)
 
 	log_dir = get_data_path(kPathLogs);
 	
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	if (!get_data_path(kPathBundleData).empty())
 	{
 		bundle_data_dir = get_data_path(kPathBundleData);
@@ -390,7 +390,7 @@ void initialize_application(void)
 
 	load_film_profile(FILM_PROFILE_DEFAULT, false);
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	// Parse MML files
 	LoadBaseMMLScripts();
 
@@ -430,7 +430,7 @@ void initialize_application(void)
 	// Load preferences
 	initialize_preferences();
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 
 	local_data_dir.CreateDirectory();
 	saved_games_dir.CreateDirectory();
@@ -479,7 +479,7 @@ void initialize_application(void)
 	}
 #endif
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	if (TTF_Init() < 0)
 	{
 		std::ostringstream oss;
@@ -492,13 +492,17 @@ void initialize_application(void)
 	HTTPClient::Init();
 
 #ifdef HAVE_STEAM
-	STEAMSHIM_init();
+	if (!STEAMSHIM_init())
+	{
+		alert_user("You must launch the Steam version of Classic Marathon using the Classic Marathon Launcher.", fatalError);
+		exit(1);
+	}
 #endif
 
 	// Initialize everything
 	mytm_initialize();
 //	initialize_fonts();
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	SoundManager::instance()->Initialize(*sound_preferences);
 	initialize_marathon_music_handler();
 	initialize_joystick();
@@ -510,7 +514,7 @@ void initialize_application(void)
 #endif
 	initialize_keyboard_controller();
 	initialize_marathon();
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	initialize_terminal_manager();
 	initialize_shape_handler();
 	initialize_images_manager();
@@ -521,7 +525,7 @@ void initialize_application(void)
 
 void shutdown_application(void)
 {
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	WadImageCache::instance()->save_cache();
 
 	shutdown_dialogs();
@@ -534,7 +538,7 @@ void shutdown_application(void)
 	SDLNet_Quit();
 #endif
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	TTF_Quit();
 	SDL_Quit();
 #endif
@@ -653,7 +657,7 @@ short get_level_number_from_user(void)
 	return level;
 }
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 
 extern bool hub_is_active();
 
@@ -662,11 +666,11 @@ static bool InitGameForStandaloneHub(void)
 	initialize_map_for_new_game();
 
 	byte* physics = nullptr;
-	int physics_length = NetworkServer::Instance()->GetPhysicsData(&physics);
+	int physics_length = StandaloneHub::Instance()->GetPhysicsData(&physics);
 	if (physics) return true; //don't need to init further
 
 	byte* wad = nullptr;
-	int wad_length = NetworkServer::Instance()->GetMapData(&wad);
+	int wad_length = StandaloneHub::Instance()->GetMapData(&wad);
 	if (!wad) return false; //something is wrong
 
 	auto wad_copy = new byte[wad_length];
@@ -682,10 +686,40 @@ static bool InitGameForStandaloneHub(void)
 	return true;
 }
 
+static bool StandaloneHubGameInProgress(bool& game_is_done)
+{
+	game_is_done = false;
+
+	if (hub_is_active() && !StandaloneHub::Instance()->HasGameEnded())
+	{
+		NetProcessMessagesInGame();
+		return true;
+	}
+
+	if (!NetUnSync()) return false; //should never happen
+
+	bool next_game = false;
+
+	if (StandaloneHub::Instance()->GetGameDataFromGatherer())
+	{
+		initialize_map_for_new_level();
+		next_game = NetChangeMap(nullptr) && NetSync(); //don't stop the server if it fails here
+	}
+
+	if (!next_game)
+	{
+		game_is_done = true;
+		return StandaloneHub::Reset();
+	}
+
+	StandaloneHub::Instance()->SetGameEnded(false);
+	return true;
+}
+
 static bool StandaloneHubHostGame(bool& game_has_started)
 {
 	game_has_started = false;
-	bool success = NetworkServer::InitNetworkServer(4225);
+	bool success = StandaloneHub::Init(shell_options.standalone_hub_port);
 
 	if (!success)
 	{
@@ -694,7 +728,7 @@ static bool StandaloneHubHostGame(bool& game_has_started)
 	}
 
 	bool gathering_done;
-	success = NetworkServer::Instance()->SetupGathererGame(gathering_done);
+	success = StandaloneHub::Instance()->SetupGathererGame(gathering_done);
 
 	if (!success)
 	{
@@ -710,9 +744,9 @@ static bool StandaloneHubHostGame(bool& game_has_started)
 		return true;
 	}
 
-	return NetworkServer::Reset();
+	return StandaloneHub::Reset();
 }
-#endif
+#endif // A1_NETWORK_STANDALONE_HUB
 
 const uint32 TICKS_BETWEEN_EVENT_POLL = 16; // 60 Hz
 void main_event_loop(void)
@@ -756,31 +790,30 @@ void main_event_loop(void)
 				yield_time = poll_event = true;
 				break;
 
-#ifdef NETWORK_SERVER
-			case _network_server_waiting_for_gatherer:
+#ifdef A1_NETWORK_STANDALONE_HUB
+			case _standalone_hub_waiting_for_gatherer:
 			{
 				bool game_has_started;
 
 				if (!StandaloneHubHostGame(game_has_started))
 					set_game_state(_quit_game);
 				else if (game_has_started)
-					set_game_state(_network_server_game_in_progress);
+					set_game_state(_standalone_hub_game_in_progress);
 
 				break;
 			}
 
-			case _network_server_game_in_progress:
+			case _standalone_hub_game_in_progress:
+			{
+				bool game_is_done;
 
-				if (hub_is_active())
-					NetProcessMessagesInGame();
-				else 
-				{
-					NetUnSync();
-					NetworkServer::Reset();
-					set_game_state(_network_server_waiting_for_gatherer);
-				}
+				if (!StandaloneHubGameInProgress(game_is_done))
+					set_game_state(_quit_game);
+				else if (game_is_done)
+					set_game_state(_standalone_hub_waiting_for_gatherer);
 
 				break;
+			}
 #endif
 		}
 
@@ -804,10 +837,25 @@ void main_event_loop(void)
 			}
 
 #ifdef HAVE_STEAM
-			while (STEAMSHIM_pump()) {}
+			while (auto steam_event = STEAMSHIM_pump()) {
+				switch (steam_event->type) {
+					case SHIMEVENT_ISOVERLAYACTIVATED:
+						if (steam_event->okay && get_game_state() == _game_in_progress && !game_is_networked)
+						{
+							pause_game();
+						}
+						break;
+
+					default:
+						break;
+				}
+			}
 #endif
 		}
 
+#ifdef A1_NETWORK_STANDALONE_HUB
+		sleep_for_machine_ticks(1);
+#else
 		execute_timer_tasks(machine_tick_count());
 		idle_game_state(machine_tick_count());
 
@@ -817,7 +865,7 @@ void main_event_loop(void)
 			fps_target = 30;
 		}
 	
-		if ((game_state == _game_in_progress && fps_target != 0) || game_state == _network_server_waiting_for_gatherer)
+		if (game_state == _game_in_progress && fps_target != 0)
 		{
 			int elapsed_machine_ticks = machine_tick_count() - cur_time;
 			int desired_elapsed_machine_ticks = MACHINE_TICKS_PER_SECOND / fps_target;
@@ -827,7 +875,7 @@ void main_event_loop(void)
 				sleep_for_machine_ticks(1);
 			}
 		}
-#ifndef NETWORK_SERVER
+
 		else if (game_state != _game_in_progress)
 		{
 			static auto last_redraw = 0;
@@ -837,7 +885,7 @@ void main_event_loop(void)
 				last_redraw = machine_tick_count();
 			}
 		}
-#endif // NETWORK_SERVER
+#endif
 	}
 }
 
@@ -1413,13 +1461,22 @@ static void process_event(const SDL_Event &event)
 		break;
 	
 	case SDL_CONTROLLERBUTTONDOWN:
-		joystick_button_pressed(event.cbutton.which, event.cbutton.button, true);
-		SDL_Event e2;
-		memset(&e2, 0, sizeof(SDL_Event));
-		e2.type = SDL_KEYDOWN;
-		e2.key.keysym.sym = SDLK_UNKNOWN;
-		e2.key.keysym.scancode = (SDL_Scancode)(AO_SCANCODE_BASE_JOYSTICK_BUTTON + event.cbutton.button);
-		process_game_key(e2);
+		if (get_game_state() == _game_in_progress && !get_keyboard_controller_status())
+		{
+			hide_cursor();
+			validate_world_window();
+			set_keyboard_controller_status(true);
+		}
+		else
+		{
+			joystick_button_pressed(event.cbutton.which, event.cbutton.button, true);
+			SDL_Event e2;
+			memset(&e2, 0, sizeof(SDL_Event));
+			e2.type = SDL_KEYDOWN;
+			e2.key.keysym.sym = SDLK_UNKNOWN;
+			e2.key.keysym.scancode = (SDL_Scancode)(AO_SCANCODE_BASE_JOYSTICK_BUTTON + event.cbutton.button);
+			process_game_key(e2);
+		}
 		break;
 		
 	case SDL_CONTROLLERBUTTONUP:
@@ -1435,7 +1492,8 @@ static void process_event(const SDL_Event &event)
 		break;
 			
 	case SDL_JOYDEVICEREMOVED:
-		joystick_removed(event.jdevice.which);
+		if (joystick_removed(event.jdevice.which) && get_game_state() == _game_in_progress);
+			pause_game();
 		break;
 			
 	case SDL_KEYDOWN:

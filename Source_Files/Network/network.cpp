@@ -140,7 +140,7 @@ clearly this is all broken until we have packet types
 #include <memory>
 #include <stdlib.h>
 #include <string.h>
-#include "NetworkServer.h"
+#include "StandaloneHub.h"
 #include <map>
 #include <vector>
 #include "Logging.h"
@@ -184,8 +184,8 @@ static size_t deferred_script_length = 0;
 static bool do_netscript;
 
 static CommunicationsChannelFactory *server = NULL;
-static std::unique_ptr<CommunicationsChannel> dedicated_server = NULL;
-static bool use_dedicated_server = false;
+static std::unique_ptr<CommunicationsChannel> remote_hub_server = NULL;
+static bool use_remote_hub = false;
 static byte* resumed_wad_data_for_remote_hub = NULL;
 static int resumed_wad_size_for_remote_hub = 0;
 typedef std::map<int, Client *> client_map_t;
@@ -334,7 +334,7 @@ Client::Client(std::shared_ptr<CommunicationsChannel> inChannel) : channel(inCha
 	mAcceptJoinMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleAcceptJoinMessage));
 	mChatMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleChatMessage));
 	mChangeColorsMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleChangeColorsMessage));
-	mDedicatedServerCommandMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleDedicatedServerCommandMessage));
+	mRemoteHubCommandMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleRemoteHubCommandMessage));
 	mUnexpectedMessageHandler.reset(newMessageHandlerMethod(this, &Client::unexpectedMessageHandler));
 	mDispatcher->setDefaultHandler(mUnexpectedMessageHandler.get());
 	mDispatcher->setHandlerForType(mJoinerInfoMessageHandler.get(), JoinerInfoMessage::kType);
@@ -342,7 +342,7 @@ Client::Client(std::shared_ptr<CommunicationsChannel> inChannel) : channel(inCha
 	mDispatcher->setHandlerForType(mAcceptJoinMessageHandler.get(), AcceptJoinMessage::kType);
 	mDispatcher->setHandlerForType(mChatMessageHandler.get(), NetworkChatMessage::kType);
 	mDispatcher->setHandlerForType(mChangeColorsMessageHandler.get(), ChangeColorsMessage::kType);
-	mDispatcher->setHandlerForType(mDedicatedServerCommandMessageHandler.get(), DedicatedServerCommandMessage::kType);
+	mDispatcher->setHandlerForType(mRemoteHubCommandMessageHandler.get(), RemoteHubCommandMessage::kType);
 	channel->setMessageHandler(mDispatcher.get());
 }
 
@@ -371,7 +371,7 @@ void Client::drop()
 	} else if (state == _awaiting_map) { // need to remove from topo
 		uint16 stream_id = getStreamIdFromChannel(channel.get());
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 		int i = 0;
 #else
 		int i = 1;
@@ -395,7 +395,7 @@ void Client::drop()
 				gatherCallbacks->JoinedPlayerDropped(&player);
 			}
 
-			if (gMetaserverClient->isConnected())
+			if (gMetaserverClient && gMetaserverClient->isConnected())
 			{
 				gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
 			}
@@ -549,10 +549,10 @@ void Client::handleCapabilitiesMessage(CapabilitiesMessage* capabilitiesMessage,
 		if (capabilities_indicate_player_is_gatherable(_warn_joiner)) {
 			state = Client::_connected_but_not_yet_shown;
 
-#ifdef NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 			int stream_id = getStreamIdFromChannel(channel);
 
-			if (channel == NetworkServer::Instance()->GetGathererChannel()) 
+			if (channel == StandaloneHub::Instance()->GetGathererChannel())
 			{
 				prospective_joiner_info gatherer = {};
 				gatherer.stream_id = stream_id;
@@ -572,9 +572,9 @@ void Client::handleCapabilitiesMessage(CapabilitiesMessage* capabilitiesMessage,
 				joiner.color = client->color;
 				joiner.team = client->team;
 				JoinerInfoMessage joinerInfoMessage(&joiner, kNetworkSetupProtocolID);
-				NetworkServer::Instance()->SendMessageToGatherer(joinerInfoMessage);
+				StandaloneHub::Instance()->SendMessageToGatherer(joinerInfoMessage);
 			}
-#endif // NETWORK_SERVER
+#endif // A1_NETWORK_STANDALONE_HUB
 		} else {
 			state = Client::_ungatherable;
 		}
@@ -639,18 +639,18 @@ void Client::handleAcceptJoinMessage(AcceptJoinMessage* acceptJoinMessage,
 	  {
 		  gatherCallbacks->JoinSucceeded(&player);
 
-		  if (gMetaserverClient->isConnected())
+		  if (gMetaserverClient && gMetaserverClient->isConnected())
 		  {
 			  gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
 		  }
 	  }
 
-#if NETWORK_SERVER
-	  if (channel.get() == NetworkServer::Instance()->GetGathererChannel())
-		  NetworkServer::Instance()->GathererJoinedAsClient();
+#ifdef A1_NETWORK_STANDALONE_HUB
+	  if (channel.get() == StandaloneHub::Instance()->GetGathererChannel())
+		  StandaloneHub::Instance()->GathererJoinedAsClient();
 	  else
-		  NetworkServer::Instance()->SendMessageToGatherer(*acceptJoinMessage);
-#endif // NETWORK_SERVER
+		  StandaloneHub::Instance()->SendMessageToGatherer(*acceptJoinMessage);
+#endif
 
     } else {
       // joiner didn't accept!?
@@ -685,7 +685,7 @@ void Client::handleChangeColorsMessage(ChangeColorsMessage *changeColorsMessage,
 	if (state == _awaiting_map) {
 		uint16 stream_id = getStreamIdFromChannel(channel);
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 		int i = 0;
 #else
 		int i = 1;
@@ -723,14 +723,14 @@ void Client::handleChangeColorsMessage(ChangeColorsMessage *changeColorsMessage,
 	}
 }
 
-void Client::handleDedicatedServerCommandMessage(DedicatedServerCommandMessage* message, CommunicationsChannel*)
+void Client::handleRemoteHubCommandMessage(RemoteHubCommandMessage* message, CommunicationsChannel*)
 {
-#ifdef NETWORK_SERVER
-	if (channel.get() == NetworkServer::Instance()->GetGathererChannel())
+#ifdef A1_NETWORK_STANDALONE_HUB
+	if (channel.get() == StandaloneHub::Instance()->GetGathererChannel())
 	{
 		switch (message->command())
 		{
-			case DedicatedServerCommand::kAcceptJoiner_Command:
+			case RemoteHubCommand::kAcceptJoiner_Command:
 			{
 				if (NetGetNumberOfPlayers() >= MAXIMUM_NUMBER_OF_PLAYERS)
 				{
@@ -739,16 +739,20 @@ void Client::handleDedicatedServerCommandMessage(DedicatedServerCommandMessage* 
 				else
 				{
 					prospective_joiner_info info = {};
-					info.stream_id = message->streamId();
+					info.stream_id = message->data();
 					NetGatherPlayer(info, reassign_player_colors);
 				}
 				break;
 			}
-			case DedicatedServerCommand::kStartGame_Command:
-				NetworkServer::Instance()->StartGame();
+			case RemoteHubCommand::kStartGame_Command:
+				StandaloneHub::Instance()->StartGame();
+				break;
+			case RemoteHubCommand::kEndGame_Command:
+				dynamic_world->tick_count = message->data();
+				StandaloneHub::Instance()->SetGameEnded(true);
 				break;
 			default:
-				logAnomaly("unexpected command received from dedicated server command message (command is %d)", message->command());
+				logAnomaly("unexpected command received from remote hub message (command is %d)", message->command());
 				break;
 		}
 
@@ -756,7 +760,7 @@ void Client::handleDedicatedServerCommandMessage(DedicatedServerCommandMessage* 
 	}
 #endif
 
-	logAnomaly("unexpected dedicated server command message received; ignoring");
+	logAnomaly("unexpected remote hub command message received; ignoring");
 }
 
 void Client::handleChatMessage(NetworkChatMessage* netChatMessage, 
@@ -892,14 +896,22 @@ static void handleClientInfoMessage(ClientInfoMessage* clientInfoMessage, Commun
 			delete client_chat_info[id];
 			client_chat_info.erase(id);
 
-			if (use_dedicated_server && gatherCallbacks)
+			if (use_remote_hub)
 			{
-				prospective_joiner_info joiner_info = {};
-				joiner_info.stream_id = clientInfoMessage->stream_id();
-				joiner_info.color = clientInfoMessage->info()->color;
-				joiner_info.team = clientInfoMessage->info()->team;
-				std::strncpy(joiner_info.name, clientInfoMessage->info()->name.c_str(), clientInfoMessage->info()->name.length());
-				gatherCallbacks->JoiningPlayerDropped(&joiner_info);
+				if (gatherCallbacks)
+				{
+					prospective_joiner_info joiner_info = {};
+					joiner_info.stream_id = clientInfoMessage->stream_id();
+					joiner_info.color = clientInfoMessage->info()->color;
+					joiner_info.team = clientInfoMessage->info()->team;
+					std::strncpy(joiner_info.name, clientInfoMessage->info()->name.c_str(), clientInfoMessage->info()->name.length());
+					gatherCallbacks->JoiningPlayerDropped(&joiner_info);
+				}
+
+				if (gMetaserverClient && gMetaserverClient->isConnected())
+				{
+					gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
+				}
 			}
 
 		} else if (clientInfoMessage->action() == ClientInfoMessage::kUpdate) {
@@ -917,7 +929,7 @@ static void handleJoinPlayerMessage(JoinPlayerMessage* joinPlayerMessage, Commun
     /* Note that we could set accepted to false if we wanted to for some */
     /*  reason- such as bad serial numbers.... */
     
-	if (!use_dedicated_server) SetNetscriptStatus (false); // Unless told otherwise, we don't expect a netscript
+	if (!use_remote_hub) SetNetscriptStatus (false); // Unless told otherwise, we don't expect a netscript
 
 	assert(localPlayerIndex != NONE);
     
@@ -1113,7 +1125,7 @@ static void handleTopologyMessage(TopologyMessage* topologyMessage, Communicatio
 }
 
 static void handleJoinerInfoMessage(JoinerInfoMessage* joinerInfoMessage, CommunicationsChannel*) {
-	if (use_dedicated_server)
+	if (use_remote_hub)
 	{
 		if (gatherCallbacks)
 		{
@@ -1127,13 +1139,18 @@ static void handleJoinerInfoMessage(JoinerInfoMessage* joinerInfoMessage, Commun
 }
 
 static void handleAcceptJoinMessage(AcceptJoinMessage* acceptJoinMessage, CommunicationsChannel*) {
-	if (use_dedicated_server)
+	if (use_remote_hub)
 	{
 		if (acceptJoinMessage->accepted() && gatherCallbacks)
 		{
 			prospective_joiner_info info = {};
 			info.stream_id = acceptJoinMessage->player()->stream_id;
 			gatherCallbacks->JoinSucceeded(&info);
+
+			if (gMetaserverClient && gMetaserverClient->isConnected())
+			{
+				gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
+			}
 		}
 	}
 	else
@@ -1244,10 +1261,10 @@ void InGameChatCallbacks::ReceivedMessageFromPlayer(const char *player_name, con
   screen_printf("%s: %s", player_name, message);
 }
 
-bool NetEnter(bool use_dedicated_server)
+bool NetEnter(bool use_remote_hub)
 {
 	OSErr error;
-	::use_dedicated_server = use_dedicated_server;
+	::use_remote_hub = use_remote_hub;
   
 	assert(netState==netUninitialized);
   
@@ -1268,11 +1285,11 @@ bool NetEnter(bool use_dedicated_server)
 		assert(topology);
 		memset(topology, 0, sizeof(NetTopology));
 
-#ifdef NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 		NetSetServerIdentifier(NONE);
 #else
-		NetSetServerIdentifier(use_dedicated_server ? NONE : 0);
-#endif // NETWORK_SERVER
+		NetSetServerIdentifier(use_remote_hub ? NONE : 0);
+#endif
 
 		// ZZZ: Sorry, if this swapping is not supported on all current A1
 		// platforms, feel free to rewrite it in a way that is.
@@ -1317,8 +1334,8 @@ bool NetEnter(bool use_dedicated_server)
 		inflater->learnPrototype(ClientInfoMessage());
 		inflater->learnPrototype(NetworkStatsMessage());
 		inflater->learnPrototype(GameSessionMessage());
-		inflater->learnPrototype(DedicatedServerCommandMessage());
-		inflater->learnPrototype(DedicatedServerReadyMessage());
+		inflater->learnPrototype(RemoteHubCommandMessage());
+		inflater->learnPrototype(RemoteHubReadyMessage());
 	}
   
 	if (!joinDispatcher) {
@@ -1371,7 +1388,7 @@ bool NetEnter(bool use_dedicated_server)
 	next_join_attempt = last_network_stats_send = machine_tick_count();
   
 	if (error) {
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 		alert_user(infoError, strNETWORK_ERRORS, netErrCantContinue, error);
 #endif
 		NetExit();
@@ -1427,8 +1444,8 @@ void NetExit(
 		connection_to_server = NULL;
 	}
 
-	if (dedicated_server) {
-		dedicated_server.reset();
+	if (remote_hub_server) {
+		remote_hub_server.reset();
 	}
 
 	if (server_nbc) {
@@ -1477,6 +1494,13 @@ NetSync()
 bool
 NetUnSync()
 {
+	if (use_remote_hub && connection_to_server)
+	{
+		RemoteHubCommandMessage message(RemoteHubCommand::kEndGame_Command, dynamic_world->tick_count);
+		connection_to_server->enqueueOutgoingMessage(message);
+		connection_to_server->pumpSendingSide();
+	}
+
 	return sCurrentGameProtocol->UnSync(true, dynamic_world->tick_count);
 }
 
@@ -1616,7 +1640,7 @@ bool NetGather(
 	NetInitializeSessionIdentifier();
 
 #ifdef HAVE_MINIUPNPC
-	if (!port_forward && attempt_upnp && !use_dedicated_server)
+	if (!port_forward && attempt_upnp && !use_remote_hub)
 	{
 		open_progress_dialog(_opening_router_ports);
 		try
@@ -1640,14 +1664,14 @@ bool NetGather(
 	netState = netGathering;
 
 	// Start listening for joiners
-	if (use_dedicated_server)
+	if (use_remote_hub)
 	{
-		open_progress_dialog(_connecting_to_dedicated_server);
+		open_progress_dialog(_connecting_to_remote_hub);
 
 		if (!NetConnectRemoteHub())
 		{
 			close_progress_dialog();
-			alert_user(infoError, strNETWORK_ERRORS, netWarnDedicatedServerNotReachable, -1);
+			alert_user(infoError, strNETWORK_ERRORS, netWarnRemoteHubServerNotReachable, -1);
 			return false;
 		}
 
@@ -1657,12 +1681,12 @@ bool NetGather(
 	{
 		server = new CommunicationsChannelFactory(GAME_PORT);
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 		client_chat_info[0] = new ClientChatInfo;
 		client_chat_info[0]->name = player_preferences->name;
 		client_chat_info[0]->color = player_preferences->color;
 		client_chat_info[0]->team = player_preferences->team;
-#endif // !NETWORK_SERVER
+#endif
 	}
 	
 	return true;
@@ -1670,14 +1694,14 @@ bool NetGather(
 
 bool NetConnectRemoteHub()
 {
-	/* IP & ports of available dedicated servers should be sent by the metaserver */
-	dedicated_server = std::make_unique<CommunicationsChannel>();
-	dedicated_server->connect("192.168.0.30", 4225);
-	if (!dedicated_server->isConnected()) return false;
+	/* IP & ports of available remote hub servers should be sent by the metaserver */
+	remote_hub_server = std::make_unique<CommunicationsChannel>();
+	remote_hub_server->connect("192.168.0.30", 4225);
+	if (!remote_hub_server->isConnected()) return false;
 
-	NetSetDefaultInflater(dedicated_server.get());
+	NetSetDefaultInflater(remote_hub_server.get());
 	TopologyMessage topologyMessage(topology);
-	dedicated_server->enqueueOutgoingMessage(topologyMessage);
+	remote_hub_server->enqueueOutgoingMessage(topologyMessage);
 
 	byte* wad = nullptr;
 	int wad_length;
@@ -1696,16 +1720,16 @@ bool NetConnectRemoteHub()
 		wad_length = get_net_map_data_length(wad);
 	}
 
-	auto error = NetDistributeGameDataToAllPlayers(wad, wad_length, !resuming_saved_game, dedicated_server.get());
+	NetDistributeGameDataToAllPlayers(wad, wad_length, !resuming_saved_game, remote_hub_server.get());
 
 	if (resuming_saved_game)
 		NetSetResumedGameWadForRemoteHub(nullptr, 0);
 	else
 		free(wad);
 
-	if (!dedicated_server->receiveSpecificMessage<DedicatedServerReadyMessage>())
+	if (!remote_hub_server->receiveSpecificMessage<RemoteHubReadyMessage>())
 	{
-		dedicated_server->disconnect();
+		remote_hub_server->disconnect();
 		return false;
 	}
 
@@ -1750,7 +1774,7 @@ bool NetStart(
         
                 NetUpdateTopology();
         }
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 		else
 		{
 			player_start_data theStarts[MAXIMUM_NUMBER_OF_PLAYERS];
@@ -1833,9 +1857,9 @@ bool NetGameJoin(
 	    nbc_is_resolving = true;
 	    server_nbc = ConnectPool::instance()->connect(host_str.c_str(), port);
     }
-  else if (dedicated_server)
+  else if (remote_hub_server)
   {
-	  server_nbc = ConnectPool::instance()->connect(dedicated_server.release());
+	  server_nbc = ConnectPool::instance()->connect(remote_hub_server.release());
   }
   
     netState = netConnecting;
@@ -1942,7 +1966,7 @@ bool NetNumberOfPlayerIsValid(
 short NetGetNumberOfPlayers(
 	void)
 {
-	assert(netState!=netUninitialized /* &&netState!=netDown*/ && (netState!=netJoining || use_dedicated_server));
+	assert(netState!=netUninitialized /* &&netState!=netDown*/ && (netState!=netJoining || use_remote_hub));
 	
 	return topology->player_count;
 }
@@ -1950,7 +1974,7 @@ short NetGetNumberOfPlayers(
 void *NetGetPlayerData(
 	short player_index)
 {
-	assert(netState!=netUninitialized/* && netState!=netDown */ && (netState!=netJoining || use_dedicated_server));
+	assert(netState!=netUninitialized/* && netState!=netDown */ && (netState!=netJoining || use_remote_hub));
 	assert(player_index>=0&&player_index<topology->player_count);
 	
 	return (void *) &topology->players[player_index].player_data;
@@ -2018,6 +2042,46 @@ void NetSetupTopologyFromStarts(const player_start_data* inStartArray, short inS
         NetUpdateTopology();
 }
 
+/*
+------------------
+NetEntityNotInGame
+------------------
+
+	---> entity
+	---> address
+	
+	<--- true if the entity is not in the game, false otherwise
+
+used to filter entities which have been added to a game out of the lookup list
+*/
+
+/* if the given address is already added to our game, filter it out of the gather dialog */
+bool NetEntityNotInGame(
+	NetEntityName *entity,
+	NetAddrBlock *address)
+{
+	short player_index;
+	bool valid= true;
+	
+	(void) (entity);
+	
+	for (player_index=0;player_index<topology->player_count;++player_index)
+	{
+		NetAddrBlock *player_address= &topology->players[player_index].dspAddress;
+		
+		if (address->host == player_address->host && address->port == player_address->port)
+		{
+			valid= false;
+			break;
+		}
+	}
+	
+	return valid;
+}
+
+
+
+
 /* ---------- private code */
 
 void
@@ -2025,6 +2089,8 @@ NetDDPPacketHandler(DDPPacketBufferPtr packet)
 {
 	sCurrentGameProtocol->PacketHandler(packet);
 }
+
+
 
 /*
 local player initializers
@@ -2041,7 +2107,7 @@ static void NetInitializeTopology(
 	assert(game_data_size>=0&&game_data_size<MAXIMUM_GAME_DATA_SIZE);
 
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 	localPlayerIndex = localPlayerIdentifier = NONE;
 	topology->player_count = 0;
 	topology->nextIdentifier = 0;
@@ -2089,7 +2155,7 @@ static void NetLocalAddrBlock(
 static void NetUpdateTopology(
 	void)
 {
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	/* recalculate localPlayerIndex */					
 	for (localPlayerIndex=0;localPlayerIndex<topology->player_count;++localPlayerIndex)
 	{
@@ -2098,7 +2164,7 @@ static void NetUpdateTopology(
 #ifdef DEBUG
 	if (localPlayerIndex==topology->player_count) fdprintf("couldn't find my identifier: %p", (void*)topology);
 #endif
-#endif // NETWORK_SERVER
+#endif
 }
 
 
@@ -2239,18 +2305,12 @@ bool NetChangeMap(
 	  // being the server, we must send out the map to everyone.	
 	  if(localPlayerIndex==sServerPlayerIndex) {
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 
-		 // success = NetworkServer::Instance()->GetGameDataFromGatherer();
-		  success = true;
-		  if (true)
-		  {
-			  length = NetworkServer::Instance()->GetMapData(&wad);
-
-			  byte* physics = nullptr;
-			  do_physics = NetworkServer::Instance()->GetPhysicsData(&physics);
-
-		  }
+		length = StandaloneHub::Instance()->GetMapData(&wad);
+		assert(wad);
+		byte* physics = nullptr;
+		do_physics = StandaloneHub::Instance()->GetPhysicsData(&physics);
 
 #else
 		  wad = (unsigned char*)get_map_for_net_transfer(entry);
@@ -2262,14 +2322,14 @@ bool NetChangeMap(
 
 	  } else { // wait for de damn map.
 
-		 /* if (use_dedicated_server) //if the gatherer is using a remote hub, it has to send it to the hub first
+		  if (use_remote_hub && get_game_state() == _change_level) //if the gatherer is using a remote hub, it has to send it to the hub first
 		  {
 			  wad = (unsigned char*)get_map_for_net_transfer(entry);
 			  assert(wad);
 			  length = get_net_map_data_length(wad);
 			  NetDistributeGameDataToAllPlayers(wad, length, true, connection_to_server);
 			  free(wad);
-		  }*/
+		  }
 
 	      wad = NetReceiveGameData(true);
 	      if(!wad) {
@@ -2279,7 +2339,7 @@ bool NetChangeMap(
 	      }
 	  }
 	  
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	  /* Now load the level.. */
 	  if (wad)
 	    {
@@ -2314,7 +2374,7 @@ void SetNetscriptStatus (bool status)
 OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer, 
 					int32 wad_length,
 					bool do_physics,
-					CommunicationsChannel* dedicated_server)
+					CommunicationsChannel* remote_hub)
 {
 	short playerIndex, message_id;
 	OSErr error= noErr;
@@ -2326,11 +2386,11 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 	size_t lua_length;
 	byte* lua_buffer = NULL;
 	
-	message_id = dedicated_server ? _connecting_to_dedicated_server : (topology->player_count==2) ? (_distribute_map_single) : (_distribute_map_multiple);
-	physics_message_id = dedicated_server ? _connecting_to_dedicated_server : (topology->player_count==2) ? (_distribute_physics_single) : (_distribute_physics_multiple);
+	message_id = remote_hub ? _connecting_to_remote_hub : (topology->player_count==2) ? (_distribute_map_single) : (_distribute_map_multiple);
+	physics_message_id = remote_hub ? _connecting_to_remote_hub : (topology->player_count==2) ? (_distribute_physics_single) : (_distribute_physics_multiple);
 
-#ifndef NETWORK_SERVER
-	if (!dedicated_server) open_progress_dialog(physics_message_id);
+#ifndef A1_NETWORK_STANDALONE_HUB
+	if (!remote_hub) open_progress_dialog(physics_message_id);
 #endif
 	
 	/* For updating our progress bar.. */
@@ -2339,8 +2399,8 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 	/* Get the physics */
 	if (do_physics)
 	{
-#if NETWORK_SERVER
-		physics_length = NetworkServer::Instance()->GetPhysicsData(&physics_buffer);
+#ifdef A1_NETWORK_STANDALONE_HUB
+		physics_length = StandaloneHub::Instance()->GetPhysicsData(&physics_buffer);
 #else
 		physics_buffer = (unsigned char*)get_network_physics_buffer(&physics_length);
 #endif 
@@ -2353,10 +2413,10 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 	std::vector<CommunicationsChannel *> zipCapableChannels;
 	std::vector<CommunicationsChannel *> zipIncapableChannels;
 
-	if (dedicated_server)
+	if (remote_hub)
 	{
-		channels.push_back(dedicated_server);
-		zipCapableChannels.push_back(dedicated_server);
+		channels.push_back(remote_hub);
+		zipCapableChannels.push_back(remote_hub);
 	}
 	else
 	{
@@ -2384,8 +2444,8 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 		}
 	}
 
-#ifndef NETWORK_SERVER
-	if (!dedicated_server)
+#ifndef A1_NETWORK_STANDALONE_HUB
+	if (!remote_hub)
 	{
 		set_progress_dialog_message(message_id);
 		reset_progress_bar();
@@ -2427,8 +2487,8 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 		}
 	}
 
-#if NETWORK_SERVER
-	lua_length = NetworkServer::Instance()->GetLuaData(&lua_buffer);
+#ifdef A1_NETWORK_STANDALONE_HUB
+	lua_length = StandaloneHub::Instance()->GetLuaData(&lua_buffer);
 	SetNetscriptStatus(lua_length);
 #else
 	lua_length = deferred_script_length;
@@ -2458,7 +2518,7 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 
 	CommunicationsChannel::multipleFlushOutgoingMessages(channels, false, 30000, 30000);
 
-	if (!dedicated_server)
+	if (!remote_hub)
 	{
 		for (playerIndex = 0; playerIndex < topology->player_count; playerIndex++) {
 
@@ -2478,21 +2538,21 @@ OSErr NetDistributeGameDataToAllPlayers(byte *wad_buffer,
 		error= 1;
 	}
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	if (!error) {
 
 		/* Process the physics file & frees it!.. */
 		if (physics_buffer)
 			process_network_physics_model(physics_buffer);
 		
-		if (!dedicated_server) draw_progress_bar(total_length, total_length);
+		if (!remote_hub) draw_progress_bar(total_length, total_length);
 		
 		if (do_netscript) {
 			LoadLuaScript ((char*)deferred_script_data, deferred_script_length, _lua_netscript);
 		}
 	}
 	
-	if (!dedicated_server) close_progress_dialog();
+	if (!remote_hub) close_progress_dialog();
 #endif
 	
 	return error;
@@ -2838,11 +2898,11 @@ void NetHandleUngatheredPlayer (prospective_joiner_info ungathered_player)
   connections_to_clients.erase(ungathered_player.stream_id);
 }
 
-void NetDedicatedServerSendCommand(DedicatedServerCommand command, int stream_id)
+void NetRemoteHubSendCommand(RemoteHubCommand command, int stream_id)
 {
 	if (connection_to_server)
 	{
-		auto message = DedicatedServerCommandMessage(command, stream_id);
+		auto message = RemoteHubCommandMessage(command, stream_id);
 		connection_to_server->enqueueOutgoingMessage(message);
 		connection_to_server->pumpSendingSide();
 	}
@@ -2973,7 +3033,7 @@ static void NetDistributeTopology(
 {
 	short playerIndex;
 	
-	assert(netState==netGathering || use_dedicated_server);
+	assert(netState==netGathering || use_remote_hub);
 	
 	topology->tag= tag;
 

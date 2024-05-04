@@ -171,7 +171,7 @@ GameAvailableMetaserverAnnouncer::GameAvailableMetaserverAnnouncer(const game_in
 		}
 	}
 	
-	gMetaserverClient->announceGame(GAME_PORT, description);
+	gMetaserverClient->announceGame(4225, description);
 }
 
 void GameAvailableMetaserverAnnouncer::Start(int32 time_limit)

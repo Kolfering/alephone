@@ -114,9 +114,10 @@ struct prospective_joiner_info {
 	}
 };
 
-enum class DedicatedServerCommand {
+enum class RemoteHubCommand {
 	kAcceptJoiner_Command,
-	kStartGame_Command
+	kStartGame_Command,
+	kEndGame_Command
 };
 
 /* ---------------- functions from network.c */
@@ -193,10 +194,10 @@ typedef void (*CheckPlayerProcPtr)(short player_index, short num_players);
 /* --------- prototypes/NETWORK.C */
 void NetSetGatherCallbacks(GatherCallbacks *gc);
 void NetSetChatCallbacks(ChatCallbacks *cc);
-bool NetEnter(bool use_dedicated_server);
+bool NetEnter(bool use_remote_hub);
 void NetDoneGathering (void);
 void NetExit(void);
-void NetDedicatedServerSendCommand(DedicatedServerCommand command, int stream_id = NONE);
+void NetRemoteHubSendCommand(RemoteHubCommand command, int stream_id = NONE);
 bool NetGather(void *game_data, short game_data_size, void *player_data, 
 	short player_data_size, bool resuming_game, bool attempt_upnp);
 
@@ -263,13 +264,12 @@ bool NetSync(void);
 bool NetUnSync(void);
 bool NetStart(void);
 void NetCancelGather(void);
-bool NetworkGatherCore(game_info* game_data, player_info* player_data, bool advertiseOnMetaserver, bool resuming_game, bool attempt_upnp, bool use_dedicated_server);
 bool NetConnectRemoteHub();
 void NetSetResumedGameWadForRemoteHub(byte* wad, int length);
 int32 NetGetNetTime(void);
 
 bool NetChangeMap(struct entry_point *entry);
-OSErr NetDistributeGameDataToAllPlayers(byte* wad_buffer, int32 wad_length, bool do_physics, CommunicationsChannel* dedicated_server = nullptr);
+OSErr NetDistributeGameDataToAllPlayers(byte* wad_buffer, int32 wad_length, bool do_physics, CommunicationsChannel* remote_hub = nullptr);
 byte* NetReceiveGameData(bool do_physics);
 
 void DeferredScriptSend (byte* data, size_t length);

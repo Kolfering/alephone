@@ -53,8 +53,8 @@ enum {
   kZIPPED_LUA_MESSAGE,
   kNETWORK_STATS_MESSAGE,
   kGAME_SESSION_MESSAGE,
-  kDEDICATED_SERVER_COMMAND_MESSAGE,
-  kDEDICATED_SERVER_READY_MESSAGE
+  kREMOTE_HUB_COMMAND_MESSAGE,
+  kREMOTE_HUB_READY_MESSAGE
 };
 
 template <MessageTypeID tMessageType, typename tValueType>
@@ -195,12 +195,12 @@ private:
 	int16 mStreamID = 0;
 };
 
-class DedicatedServerReadyMessage : public SmallMessageHelper
+class RemoteHubReadyMessage : public SmallMessageHelper
 {
 public:
-	enum { kType = kDEDICATED_SERVER_READY_MESSAGE };
-	DedicatedServerReadyMessage() : SmallMessageHelper() { }
-	DedicatedServerReadyMessage* clone() const { return new DedicatedServerReadyMessage(*this); }
+	enum { kType = kREMOTE_HUB_READY_MESSAGE };
+	RemoteHubReadyMessage() : SmallMessageHelper() { }
+	RemoteHubReadyMessage* clone() const { return new RemoteHubReadyMessage(*this); }
 	MessageTypeID type() const { return kType; }
 
 protected:
@@ -441,24 +441,25 @@ class TopologyMessage : public SmallMessageHelper
   NetTopology mTopology = {};
 };
 
-class DedicatedServerCommandMessage : public SmallMessageHelper
+class RemoteHubCommandMessage : public SmallMessageHelper
 {
 public:
-	enum { kType = kDEDICATED_SERVER_COMMAND_MESSAGE };
+	enum { kType = kREMOTE_HUB_COMMAND_MESSAGE };
 
-	DedicatedServerCommandMessage() : SmallMessageHelper() {}
+	RemoteHubCommandMessage() : SmallMessageHelper() {}
 
-	DedicatedServerCommandMessage(DedicatedServerCommand command, short streamId = NONE) : SmallMessageHelper() {
+	//data is either streamId for accept command or tick_count for end game command
+	RemoteHubCommandMessage(RemoteHubCommand command, int data = NONE) : SmallMessageHelper() {
 		mCommand = command;
-		mStreamId = streamId;
+		mData = data;
 	}
 
-	DedicatedServerCommandMessage* clone() const {
-		return new DedicatedServerCommandMessage(*this);
+	RemoteHubCommandMessage* clone() const {
+		return new RemoteHubCommandMessage(*this);
 	}
 
-	DedicatedServerCommand command() const { return mCommand; }
-	short streamId() const { return mStreamId; }
+	RemoteHubCommand command() const { return mCommand; }
+	int data() const { return mData; }
 
 	MessageTypeID type() const { return kType; }
 
@@ -467,8 +468,8 @@ protected:
 	bool reallyInflateFrom(AIStream& inputStream);
 
 private:
-	DedicatedServerCommand mCommand;
-	short mStreamId = NONE;
+	RemoteHubCommand mCommand;
+	int mData = NONE;
 };
 
 struct Client {
@@ -508,13 +509,13 @@ struct Client {
 	void handleCapabilitiesMessage(CapabilitiesMessage*,CommunicationsChannel*);
 	void handleAcceptJoinMessage(AcceptJoinMessage*, CommunicationsChannel*);
 	void handleChatMessage(NetworkChatMessage*, CommunicationsChannel*);
-	void handleDedicatedServerCommandMessage(DedicatedServerCommandMessage*, CommunicationsChannel*);
+	void handleRemoteHubCommandMessage(RemoteHubCommandMessage*, CommunicationsChannel*);
 	void handleChangeColorsMessage(ChangeColorsMessage*, CommunicationsChannel*);
 
 	std::unique_ptr<MessageDispatcher> mDispatcher;
 	std::unique_ptr<MessageHandler> mJoinerInfoMessageHandler;
 	std::unique_ptr<MessageHandler> mUnexpectedMessageHandler;
-	std::unique_ptr<MessageHandler> mDedicatedServerCommandMessageHandler;
+	std::unique_ptr<MessageHandler> mRemoteHubCommandMessageHandler;
 	std::unique_ptr<MessageHandler> mCapabilitiesMessageHandler;
 	std::unique_ptr<MessageHandler> mAcceptJoinMessageHandler;
 	std::unique_ptr<MessageHandler> mChatMessageHandler;

@@ -3375,7 +3375,7 @@ void read_preferences ()
 	default_player_preferences(player_preferences);
 	default_input_preferences(input_preferences);
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 
 	*sound_preferences = SoundManager::Parameters();
 	default_environment_preferences(environment_preferences);
@@ -3876,6 +3876,7 @@ InfoTree network_preferences_tree()
 	root.put_attr("cheat_flags", network_preferences->cheat_flags);
 	root.put_attr("advertise_on_metaserver", network_preferences->advertise_on_metaserver);
 	root.put_attr("attempt_upnp", network_preferences->attempt_upnp);
+	root.put_attr("use_remote_hub", network_preferences->use_remote_hub);
 	root.put_attr("check_for_updates", network_preferences->check_for_updates);
 	root.put_attr("verify_https", network_preferences->verify_https);
 	root.put_attr("metaserver_login", network_preferences->metaserver_login);
@@ -4042,6 +4043,7 @@ static void default_network_preferences(network_preferences_data *preferences)
 	preferences->cheat_flags = _allow_tunnel_vision | _allow_crosshair | _allow_behindview | _allow_overlay_map;
 	preferences->advertise_on_metaserver = false;
 	preferences->attempt_upnp = false;
+	preferences->use_remote_hub = false;
 	preferences->check_for_updates = true;
 	preferences->verify_https = false;
 	strncpy(preferences->metaserver_login, "guest", preferences->kMetaserverLoginLength);
@@ -4871,6 +4873,7 @@ void parse_network_preferences(InfoTree root, std::string version)
 	root.read_attr("cheat_flags", network_preferences->cheat_flags);
 	root.read_attr("advertise_on_metaserver", network_preferences->advertise_on_metaserver);
 	root.read_attr("attempt_upnp", network_preferences->attempt_upnp);
+	root.read_attr("use_remote_hub", network_preferences->use_remote_hub);
 	root.read_attr("check_for_updates", network_preferences->check_for_updates);
 	root.read_attr("verify_https", network_preferences->verify_https);
 	root.read_attr("use_custom_metaserver_colors", network_preferences->use_custom_metaserver_colors);

@@ -17,6 +17,7 @@ typedef enum STEAMSHIM_EventType
     SHIMEVENT_GETSTATI,
     SHIMEVENT_SETSTATF,
     SHIMEVENT_GETSTATF,
+    SHIMEVENT_ISOVERLAYACTIVATED
 } STEAMSHIM_EventType;
 
 /* not all of these fields make sense in a given event. */

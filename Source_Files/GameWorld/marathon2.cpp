@@ -690,7 +690,6 @@ bool entering_map(bool restoring_saved)
 #if !defined(DISABLE_NETWORKING)
 	if (dynamic_world->player_count>1 && !restoring_saved) initialize_net_game();
 #endif // !defined(DISABLE_NETWORKING)
-
 	randomize_scenery_shapes();
 
 //	reset_action_queues(); //¶¶
@@ -708,7 +707,7 @@ bool entering_map(bool restoring_saved)
 	// Zero out fades *AND* any inadvertant fades from script start...
 	stop_fade();
 	set_fade_effect(NONE);
-
+	
 	if (!success) leaving_map();
 
 	first_frame_rendered = false;

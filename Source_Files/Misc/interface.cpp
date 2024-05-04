@@ -109,6 +109,7 @@ Feb 13, 2003 (Woody Zenfell):
 */
 
 #include "cseries.h" // sorry ryan, nov. 4
+#include <array>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -312,6 +313,7 @@ static void display_credits(void);
 static void draw_button(short index, bool pressed);
 static void draw_powered_by_aleph_one(bool pressed);
 static void handle_replay(bool last_replay);
+static bool begin_game(short user, bool cheat);
 static void start_game(short user, bool changing_level);
 // LP: "static" removed
 void handle_load_game(void);
@@ -357,10 +359,10 @@ screen_data *get_screen_data(
 void initialize_game_state(
 	void)
 {
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	game_state.state= _display_intro_screens;
 #else
-	game_state.state = _network_server_waiting_for_gatherer;
+	game_state.state = _standalone_hub_waiting_for_gatherer;
 #endif
 	game_state.user= _single_player;
 	game_state.flags= 0;
@@ -374,7 +376,7 @@ void initialize_game_state(
 	  alert_user(expand_app_variables("Insecure Lua has been manually enabled. Malicious Lua scripts can use Insecure Lua to take over your computer. Unless you specifically trust every single Lua script that will be running, you should quit $appName$ IMMEDIATELY.").c_str());
 	}
 
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	if (!shell_options.editor && shell_options.replay_directory.empty())
 	{
 		if (shell_options.skip_intro)
@@ -455,10 +457,6 @@ void set_game_state(
 				case _change_level:
 					game_state.state= new_state;
 					game_state.phase= 0;
-					break;
-
-				case _network_server_game_in_progress:
-					game_state.state = new_state;
 					break;
 					
 				default: 
@@ -825,9 +823,9 @@ bool load_and_start_game(FileSpecifier& File)
 				//we don't know at this point if we are going to use a remote hub but this must be set if we do
 				NetSetResumedGameWadForRemoteHub(theSavedGameFlatData.get(), theSavedGameFlatDataLength);
 
-				bool use_dedicated_server;
-				success = network_gather(true /*resuming*/, use_dedicated_server);
-				if (success && use_dedicated_server) return join_networked_resume_game();
+				bool use_remote_hub;
+				success = network_gather(true /*resuming*/, use_remote_hub);
+				if (success && use_remote_hub) return join_networked_resume_game();
 			}
 		}
 #endif // !defined(DISABLE_NETWORKING)
@@ -1020,9 +1018,6 @@ bool idle_game_state(uint32 time)
 		{
 			switch(get_game_state())
 			{
-
-#ifndef NETWORK_SERVER
-
 				case _display_quit_screens:
 				case _display_intro_screens:
 				case _display_prologue:
@@ -1096,21 +1091,16 @@ bool idle_game_state(uint32 time)
 					display_epilogue();
 					break;
 
-				case _change_level:
-				case _displaying_network_game_dialogs:
-					break;
-
-#endif // !NETWORK_SERVER
-
 				case _game_in_progress:
 					game_state.phase = 15 * MACHINE_TICKS_PER_SECOND;
 					//game_state.last_ticks_on_idle= machine_tick_count();
 					break;
 
+				case _change_level:
+				case _displaying_network_game_dialogs:
+					break;
+					
 				default:
-#if NETWORK_SERVER
-					return false;
-#endif
 					assert(false);
 					break;
 			}
@@ -1126,8 +1116,6 @@ bool idle_game_state(uint32 time)
 		// This way we won't fill up queues and stall netgames if one player switches out for a bit.
 		std::pair<bool, int16> theUpdateResult= update_world();
 		short ticks_elapsed= theUpdateResult.second;
-
-#ifndef  NETWORK_SERVER
 
 		if (get_keyboard_controller_status())
 		{
@@ -1150,9 +1138,7 @@ bool idle_game_state(uint32 time)
 				render_screen(ticks_elapsed);
 			}
 		}
-
-#endif // ! NETWORK_SERVER
-
+		
 		return theUpdateResult.first;
 	} else {
 		/* Update the fade ins, etc.. */
@@ -1456,34 +1442,80 @@ void portable_process_screen_click(
 	}
 }
 
+std::array<int, iAbout> menu_item_order = {
+	iNewGame,
+	iLoadGame,
+	iGatherGame,
+	iJoinGame,
+	iReplaySavedFilm,
+	iReplayLastFilm,
+	iSaveLastFilm,
+	iPreferences,
+	iQuit,
+	iCredits,
+	iAbout,
+	-1,
+	-1
+};
+
 void process_main_menu_highlight_advance(bool reverse)
 {
 	if (get_game_state() != _display_main_menu)
 		return;
 	
 	int old_button = game_state.highlighted_main_menu_item;
-	
-	// iterate through M2/Moo order
-	int item_order[] = {
-		iNewGame, iLoadGame, iGatherGame, iJoinGame,
-		iReplaySavedFilm, iReplayLastFilm, iSaveLastFilm,
-		iPreferences, iQuit, iCredits, iAbout };
-	int num_items = sizeof(item_order)/sizeof(int);
-	
-	if (game_state.highlighted_main_menu_item == -1) {
-		game_state.highlighted_main_menu_item = reverse ? item_order[0] : item_order[num_items - 1];
+
+	const auto last_index = []() {
+		return std::distance(std::find_if(menu_item_order.rbegin(),
+										  menu_item_order.rend(),
+										  [](int i) { return i != -1; }),
+							 menu_item_order.rend()) - 1;
+	};
+
+	if (game_state.highlighted_main_menu_item == -1)
+	{
+		if (reverse)
+		{
+			game_state.highlighted_main_menu_item = menu_item_order[0];
+		}
+		else
+		{
+			game_state.highlighted_main_menu_item = menu_item_order[last_index()];
+		}
 	}
-	do {
-		int cur_idx = 0;
-		for (int i = 0; i < num_items; ++i) {
-			if (item_order[i] == game_state.highlighted_main_menu_item) {
-				cur_idx = i;
+
+	do
+	{
+		auto index = -1;
+		for (auto i = 0; i < menu_item_order.size(); ++i)
+		{
+			if (menu_item_order[i] == game_state.highlighted_main_menu_item)
+			{
+				index = i;
 				break;
 			}
 		}
-		int next_idx = (cur_idx + num_items + (reverse ? -1 : 1)) % num_items;
-		game_state.highlighted_main_menu_item = item_order[next_idx];
-	} while (!enabled_item(game_state.highlighted_main_menu_item));
+
+		if (reverse)
+		{
+			--index;
+			if (index < 0)
+			{
+				index = last_index();
+			}
+		}
+		else
+		{
+			++index;
+			if (menu_item_order[index] == -1)
+			{
+				index = 0;
+			}
+		}
+			
+		game_state.highlighted_main_menu_item = menu_item_order[index];
+	}
+	while (!enabled_item(game_state.highlighted_main_menu_item));
 	
 	if (old_button != -1)
 		draw_button(old_button + START_OF_MENU_INTERFACE_RECTS - 1, false);
@@ -1921,7 +1953,7 @@ static void handle_replay( /* This is gross. */
 }
 
 // ZZZ: some modifications to use generalized game-startup
-bool begin_game(
+static bool begin_game(
 	short user,
 	bool cheat)
 {
@@ -2185,7 +2217,6 @@ static void start_game(
 	short user,
 	bool changing_level)
 {
-#ifndef NETWORK_SERVER
 	/* Change our menus.. */
 	toggle_menus(true);
 	
@@ -2208,8 +2239,6 @@ static void start_game(
 	
 	draw_interface();
 
-#endif // !NETWORK_SERVER
-
 #ifdef PERFORMANCE	
 	PerfControl(perf_globals, true);
 #endif
@@ -2224,7 +2253,6 @@ static void start_game(
 	game_state.user= user;
 	game_state.flags= 0;
 
-#ifndef NETWORK_SERVER
 	assert((!changing_level&&!get_keyboard_controller_status()) || (changing_level && get_keyboard_controller_status()));
 	if(!changing_level)
 	{
@@ -2232,7 +2260,6 @@ static void start_game(
 	}
 
 	SoundManager::instance()->UpdateListener();
-#endif
 }
 
 // LP: "static" removed
@@ -2419,9 +2446,9 @@ static void handle_network_game(
 	game_state.state= _displaying_network_game_dialogs;
 	if(gatherer)
 	{
-		bool use_dedicated_server;
-		successful_gather= network_gather(false, use_dedicated_server);
-		if (successful_gather && !use_dedicated_server) successful_gather = NetStart();
+		bool use_remote_hub;
+		successful_gather= network_gather(false, use_remote_hub);
+		if (successful_gather && !use_remote_hub) successful_gather = NetStart();
 	} else {
 		int theNetworkJoinResult= network_join();
 		if (theNetworkJoinResult == kNetworkJoinedNewGame || theNetworkJoinResult == kNetworkJoinedResumeGame) successful_gather= true;

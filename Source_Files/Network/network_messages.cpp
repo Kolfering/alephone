@@ -352,17 +352,17 @@ bool TopologyMessage::reallyInflateFrom(AIStream& inputStream) {
   return true;
 }
 
-void DedicatedServerCommandMessage::reallyDeflateTo(AOStream& outputStream) const {
+void RemoteHubCommandMessage::reallyDeflateTo(AOStream& outputStream) const {
 
 	outputStream << (short)mCommand;
-	outputStream << mStreamId;
+	outputStream << mData;
 }
 
-bool DedicatedServerCommandMessage::reallyInflateFrom(AIStream& inputStream) {
+bool RemoteHubCommandMessage::reallyInflateFrom(AIStream& inputStream) {
 	short command;
 	inputStream >> command;
-	mCommand = static_cast<DedicatedServerCommand>(command);
-	inputStream >> mStreamId;
+	mCommand = static_cast<RemoteHubCommand>(command);
+	inputStream >> mData;
 	return true;
 }
 

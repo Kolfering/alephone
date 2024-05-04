@@ -144,7 +144,7 @@ extern bool MainScreenVisible(void);
 
 void alert_user(const char *message, short severity) 
 {
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 
   if (!MainScreenVisible()) {
 	SDL_ShowSimpleMessageBox(severity == infoError ? SDL_MESSAGEBOX_WARNING : SDL_MESSAGEBOX_ERROR, severity == infoError ? "Warning" : "Error", message, NULL);
@@ -190,7 +190,7 @@ void alert_user(const char *message, short severity)
       update_game_window();
   }
 
-#endif // !NETWORK_SERVER
+#endif
 
   if (severity != infoError) exit(1);
 }

@@ -32,6 +32,7 @@
 #include "AStream.h"
 #include "MessageInflater.h"
 #include "MessageHandler.h"
+
 #include <stdlib.h>
 #include <iostream> // debugging
 #include <cerrno>
@@ -417,7 +418,6 @@ bool CommunicationsChannel::dispatchOneIncomingMessage()
 {
   if (mIncomingMessages.empty()) return false;
   Message* theMessage = mIncomingMessages.front();
-
   if (messageHandler() != NULL) {
     messageHandler()->handle(theMessage, this);
   }

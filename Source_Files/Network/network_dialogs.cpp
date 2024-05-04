@@ -78,7 +78,6 @@ Apr 10, 2003 (Woody Zenfell):
 #include	"metaserver_dialogs.h" // GameAvailableMetaserverAnnouncer
 #include	"wad.h" // jkvw: for read_wad_file_checksum 
 #include "game_wad.h" // get_map_file
-#include "NetworkServer.h"
 #include <map>
 #include <functional>
 #include "network_messages.h"
@@ -184,7 +183,7 @@ JoinerSeekingGathererAnnouncer::lost_gatherer_callback(const SSLP_ServiceInstanc
  *
  ****************************************************/
 
-bool network_gather(bool inResumingGame, bool& outUseDedicatedServer)
+bool network_gather(bool inResumingGame, bool& outUseRemoteHub)
 {
 	bool successful= false;
 	game_info myGameInfo;
@@ -193,116 +192,97 @@ bool network_gather(bool inResumingGame, bool& outUseDedicatedServer)
 	bool outUpnpPortForward = false;
 
 	show_cursor(); // JTP: Hidden one way or another
-	if (network_game_setup(&myPlayerInfo, &myGameInfo, inResumingGame, advertiseOnMetaserver, outUpnpPortForward))
+	if (network_game_setup(&myPlayerInfo, &myGameInfo, inResumingGame, advertiseOnMetaserver, outUpnpPortForward, outUseRemoteHub))
 	{
 		myPlayerInfo.desired_color= myPlayerInfo.color;
 		memset(myPlayerInfo.long_serial_number, 0, LONG_SERIAL_NUMBER_LENGTH);
-		successful = NetworkGatherCore(&myGameInfo, &myPlayerInfo, advertiseOnMetaserver, inResumingGame, outUpnpPortForward, true);
-	}
+		std::unique_ptr<GameAvailableMetaserverAnnouncer> metaserverAnnouncer;
 
-	outUseDedicatedServer = true;
-	hide_cursor();
-	return successful;
-}
-
-bool NetworkGatherCore(game_info* game_data,
-	player_info* player_data,
-	bool advertiseOnMetaserver,
-	bool resuming_game,
-	bool attempt_upnp,
-	bool use_dedicated_server)
-{
-	std::unique_ptr<GameAvailableMetaserverAnnouncer> metaserverAnnouncer;
-#ifndef NETWORK_SERVER
-	if (NetEnter(use_dedicated_server))
-#endif
-	{
-
-		bool gather_dialog_result;
-
-		if (NetGather(game_data, sizeof(game_info), player_data,
-			sizeof(player_data), resuming_game, attempt_upnp))
+		if (NetEnter(outUseRemoteHub))
 		{
-			GathererAvailableAnnouncer announcer;
+			bool gather_dialog_result;
 
-			if (!gMetaserverClient) gMetaserverClient = new MetaserverClient();
-
-			if (advertiseOnMetaserver && !use_dedicated_server)
+			if (NetGather(&myGameInfo, sizeof(game_info), (void*)&myPlayerInfo,
+				sizeof(myPlayerInfo), inResumingGame, outUpnpPortForward))
 			{
-				try
-				{
-					metaserverAnnouncer.reset(new GameAvailableMetaserverAnnouncer(*game_data));
-				}
-				catch (const MetaserverClient::LoginDeniedException& e)
-				{
-					char message[1024];
-					if (e.code() == MetaserverClient::LoginDeniedException::BadUserOrPassword)
-					{
-						strncpy(message, "Login denied: bad username or password. Your game could not be advertised on the Internet.", 1024);
-					}
-					else if (e.code() == MetaserverClient::LoginDeniedException::UserAlreadyLoggedIn)
-					{
-						strncpy(message, "Login denied: that user is already logged in. Your game could not be advertised on the Internet.", 1024);
-					}
-					else if (e.code() == MetaserverClient::LoginDeniedException::AccountAlreadyLoggedIn)
-					{
-						strncpy(message, "Login denied: that account is already logged in. Your game could not be advertised on the Internet.", 1024);
-					}
-					else if (e.code() == MetaserverClient::LoginDeniedException::RoomFull)
-					{
-						strncpy(message, "Login denied: room full! Your game could not be advertised on the Internet.", 1024);
-					}
-					else if (e.code() == MetaserverClient::LoginDeniedException::AccountLocked)
-					{
-						strncpy(message, "Login denied: your account is locked. Your game could not be advertised on the Internet.", 1024);
-					}
-					else
-					{
-						sprintf(message, "There was a problem connecting to the server that tracks Internet games (%s). Please try again later.", e.what());
-					}
+				GathererAvailableAnnouncer announcer;
 
-					alert_user(message, 0);
-				}
-				catch (const MetaserverClient::ServerConnectException&)
+				if (!gMetaserverClient) gMetaserverClient = new MetaserverClient();
+
+				if (advertiseOnMetaserver)
 				{
-					alert_user(infoError, strNETWORK_ERRORS, netWarnCouldNotAdvertiseOnMetaserver, 0);
+					try
+					{
+						metaserverAnnouncer.reset(new GameAvailableMetaserverAnnouncer(myGameInfo));
+					}
+					catch (const MetaserverClient::LoginDeniedException& e)
+					{
+						char message[1024];
+						if (e.code() == MetaserverClient::LoginDeniedException::BadUserOrPassword)
+						{
+							strncpy(message, "Login denied: bad username or password. Your game could not be advertised on the Internet.", 1024);
+						}
+						else if (e.code() == MetaserverClient::LoginDeniedException::UserAlreadyLoggedIn)
+						{
+							strncpy(message, "Login denied: that user is already logged in. Your game could not be advertised on the Internet.", 1024);
+						}
+						else if (e.code() == MetaserverClient::LoginDeniedException::AccountAlreadyLoggedIn)
+						{
+							strncpy(message, "Login denied: that account is already logged in. Your game could not be advertised on the Internet.", 1024);
+						}
+						else if (e.code() == MetaserverClient::LoginDeniedException::RoomFull)
+						{
+							strncpy(message, "Login denied: room full! Your game could not be advertised on the Internet.", 1024);
+						}
+						else if (e.code() == MetaserverClient::LoginDeniedException::AccountLocked)
+						{
+							strncpy(message, "Login denied: your account is locked. Your game could not be advertised on the Internet.", 1024);
+						}
+						else
+						{
+							sprintf(message, "There was a problem connecting to the server that tracks Internet games (%s). Please try again later.", e.what());
+						}
+
+						alert_user(message, 0);
+					}
+					catch (const MetaserverClient::ServerConnectException&)
+					{
+						alert_user(infoError, strNETWORK_ERRORS, netWarnCouldNotAdvertiseOnMetaserver, 0);
+					}
 				}
+
+				gather_dialog_result = (!outUseRemoteHub || NetGameJoin(&myPlayerInfo, sizeof(myPlayerInfo), nullptr)) && GatherDialog::Create(outUseRemoteHub)->GatherNetworkGameByRunning();
+
+			}
+			else {
+				gather_dialog_result = false;
 			}
 
-#if NETWORK_SERVER
-			gather_dialog_result = NetworkServer::Instance()->GatherJoiners();
-#else
-			gather_dialog_result = NetGameJoin(player_data, sizeof(player_data), nullptr) && GatherDialog::Create(use_dedicated_server)->GatherNetworkGameByRunning();
-#endif // !NETWORK_SERVER
-
+			if (gather_dialog_result) {
+				NetDoneGathering();
+				if (advertiseOnMetaserver)
+				{
+					metaserverAnnouncer->Start(myGameInfo.time_limit);
+					gMetaserverClient->setMode(1, NetSessionIdentifier());
+					gMetaserverClient->pump();
+				}
+				successful = true;
+			}
+			else
+			{
+				delete gMetaserverClient;
+				gMetaserverClient = new MetaserverClient();
+				if (!outUseRemoteHub) NetCancelGather();
+				NetExit();
+			}
 		}
 		else {
-			gather_dialog_result = false;
-		}
-
-		if (gather_dialog_result) {
-			NetDoneGathering();
-			if (advertiseOnMetaserver && !use_dedicated_server)
-			{
-				metaserverAnnouncer->Start(game_data->time_limit);
-				gMetaserverClient->setMode(1, NetSessionIdentifier());
-				gMetaserverClient->pump();
-			}
-			return true;
-		}
-		else
-		{
-			delete gMetaserverClient;
-			gMetaserverClient = new MetaserverClient();
-			if (!use_dedicated_server) NetCancelGather();
-			NetExit();
+			/* error correction handled in the network code now.. */
 		}
 	}
-	/* else {
-		 error correction handled in the network code now.. 
-	} */
 
-	return false;
+	hide_cursor();
+	return successful;
 }
 
 GatherDialog::~GatherDialog()
@@ -371,7 +351,7 @@ void GatherDialog::idle ()
 {
 	MetaserverClient::pumpAll();
 
-	if (dedicated_server_mode)
+	if (remote_hub_mode)
 	{
 		switch (NetUpdateJoinState())
 		{
@@ -433,8 +413,8 @@ bool GatherDialog::player_search (prospective_joiner_info& player)
 
 bool GatherDialog::gathered_player (const prospective_joiner_info& player)
 {
-	if (dedicated_server_mode) {
-		NetDedicatedServerSendCommand(DedicatedServerCommand::kAcceptJoiner_Command, player.stream_id);
+	if (remote_hub_mode) {
+		NetRemoteHubSendCommand(RemoteHubCommand::kAcceptJoiner_Command, player.stream_id);
 		auto it = m_ungathered_players.find(player.stream_id);
 
 		if (it != m_ungathered_players.end())
@@ -462,7 +442,7 @@ bool GatherDialog::gathered_player (const prospective_joiner_info& player)
 
 void GatherDialog::StartGameHit ()
 {
-	if (!dedicated_server_mode) {
+	if (!remote_hub_mode) {
 		for (std::map<int, prospective_joiner_info>::iterator it = m_ungathered_players.begin(); it != m_ungathered_players.end(); ++it)
 			NetHandleUngatheredPlayer((*it).second);
 
@@ -470,7 +450,7 @@ void GatherDialog::StartGameHit ()
 	}
 	else
 	{
-		NetDedicatedServerSendCommand(DedicatedServerCommand::kStartGame_Command);
+		NetRemoteHubSendCommand(RemoteHubCommand::kStartGame_Command);
 	}
 }
 
@@ -926,9 +906,10 @@ bool network_game_setup(
 	game_info *game_information,
 	bool ResumingGame,
 	bool& outAdvertiseGameOnMetaserver,
-	bool& outUpnpPortForward)
+	bool& outUpnpPortForward,
+	bool& outUseRemoteHub)
 {
-	if (SetupNetgameDialog::Create ()->SetupNetworkGameByRunning (player_information, game_information, ResumingGame, outAdvertiseGameOnMetaserver, outUpnpPortForward)) {
+	if (SetupNetgameDialog::Create ()->SetupNetworkGameByRunning (player_information, game_information, ResumingGame, outAdvertiseGameOnMetaserver, outUpnpPortForward, outUseRemoteHub)) {
 		write_preferences ();
 		return true;
 	} else {
@@ -1107,6 +1088,7 @@ SetupNetgameDialog::~SetupNetgameDialog ()
 	delete m_carnageMessagesWidget;
 	
 	delete m_useUpnpWidget;
+	delete m_useRemoteHub;
 }
 
 extern int32& hub_get_minimum_send_period();
@@ -1116,7 +1098,8 @@ bool SetupNetgameDialog::SetupNetworkGameByRunning (
 	game_info *game_information,
 	bool resuming_game,
 	bool& outAdvertiseGameOnMetaserver,
-	bool& outUpnpPortForward)
+	bool& outUpnpPortForward,
+	bool& outUseRemoteHub)
 {
 	int32 entry_flags;
 
@@ -1222,7 +1205,8 @@ bool SetupNetgameDialog::SetupNetworkGameByRunning (
 	binders.insert<bool> (m_penalizeDeathWidget, &penalizeDeathPref);
 	BitPref penalizeSuicidePref (active_network_preferences->game_options, _suicide_is_penalized);
 	binders.insert<bool> (m_penalizeSuicideWidget, &penalizeSuicidePref);
-				
+	
+	active_network_preferences->advertise_on_metaserver |= active_network_preferences->use_remote_hub;
 	BoolPref useMetaserverPref (active_network_preferences->advertise_on_metaserver);
 	binders.insert<bool> (m_useMetaserverWidget, &useMetaserverPref);
 	
@@ -1249,7 +1233,11 @@ bool SetupNetgameDialog::SetupNetworkGameByRunning (
 	FilePref scriptPref (active_network_preferences->netscript_file);
 	binders.insert<FileSpecifier> (m_scriptWidget, &scriptPref);
 
+	BoolPref useRemoteHubPref(active_network_preferences->use_remote_hub);
+	binders.insert<bool>(m_useRemoteHub, &useRemoteHubPref);
+
 #ifdef HAVE_MINIUPNPC
+	active_network_preferences->attempt_upnp &= !active_network_preferences->use_remote_hub;
 	BoolPref useUpnpPref (active_network_preferences->attempt_upnp);
 	binders.insert<bool> (m_useUpnpWidget, &useUpnpPref);
 #endif
@@ -1365,6 +1353,7 @@ bool SetupNetgameDialog::SetupNetworkGameByRunning (
 
 		outAdvertiseGameOnMetaserver = active_network_preferences->advertise_on_metaserver;
 		outUpnpPortForward = active_network_preferences->attempt_upnp;
+		outUseRemoteHub = active_network_preferences->use_remote_hub;
 
 		//if(shouldUseNetscript)
 		//{
@@ -2368,7 +2357,7 @@ void display_net_game_stats(void)
 class SdlGatherDialog : public GatherDialog
 {
 public:
-	SdlGatherDialog(bool dedicated_server_mode) : GatherDialog(dedicated_server_mode)
+	SdlGatherDialog(bool remote_hub_mode) : GatherDialog(remote_hub_mode)
 	{
 		vertical_placer *placer = new vertical_placer;
 		placer->dual_add(new w_title("GATHER NETWORK GAME"), m_dialog);
@@ -2455,9 +2444,9 @@ private:
 };
 
 std::unique_ptr<GatherDialog>
-GatherDialog::Create(bool dedicate_server_mode)
+GatherDialog::Create(bool remote_hub_mode)
 {
-	return std::make_unique<SdlGatherDialog>(dedicate_server_mode);
+	return std::make_unique<SdlGatherDialog>(remote_hub_mode);
 }
 
 extern struct color_table *build_8bit_system_color_table(void);
@@ -2668,11 +2657,18 @@ public:
 		network_table->col_flags(1, placeable::kAlignLeft);
 
 		w_toggle *advertise_on_metaserver_w = new w_toggle (sAdvertiseGameOnMetaserver);
+		advertise_on_metaserver_w->set_enabled(!network_preferences->use_remote_hub);
 		network_table->dual_add(advertise_on_metaserver_w, m_dialog);
 		network_table->dual_add(advertise_on_metaserver_w->label("Advertise Game on Internet"), m_dialog);
 
+		w_toggle* use_remote_hub_w = new w_toggle(true);
+
+		network_table->dual_add(use_remote_hub_w, m_dialog);
+		network_table->dual_add(use_remote_hub_w->label("Use Hosting Server"), m_dialog);
+
 #ifdef HAVE_MINIUPNPC
 		w_toggle *use_upnp_w = new w_toggle (true);
+		use_upnp_w->set_enabled(!network_preferences->use_remote_hub);
 #else
 		w_toggle *use_upnp_w = new w_toggle(false);
 #endif
@@ -2681,6 +2677,8 @@ public:
 #ifndef HAVE_MINIUPNPC
 		use_upnp_w->set_enabled(false);
 #endif
+
+
 
 		w_select_popup *latency_tolerance_w = new w_select_popup();
 		horizontal_placer *latency_placer = new horizontal_placer(get_theme_space(ITEM_WIDGET));
@@ -2872,6 +2870,26 @@ public:
 		
 		m_useUpnpWidget = new ToggleWidget (use_upnp_w);
 		m_latencyToleranceWidget = new PopupSelectorWidget(latency_tolerance_w);
+
+		m_useRemoteHub = new ToggleWidget(use_remote_hub_w);
+
+		m_useRemoteHub->set_callback([&]()
+		{
+			if (m_useRemoteHub->get_value())
+			{
+				m_useMetaserverWidget->set_value(true);
+				m_useMetaserverWidget->deactivate();
+				m_useUpnpWidget->set_value(false);
+				m_useUpnpWidget->deactivate();
+			}
+			else
+			{
+				m_useMetaserverWidget->activate();
+#ifdef HAVE_MINIUPNPC
+				m_useUpnpWidget->activate();
+#endif
+			}
+		});
 	}
 	
 	virtual bool Run ()

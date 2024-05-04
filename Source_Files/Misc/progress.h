@@ -42,7 +42,7 @@ enum {
 	_opening_router_ports,
 	_closing_router_ports,
 	_checking_for_updates,
-	_connecting_to_dedicated_server
+	_connecting_to_remote_hub
 };
 
 void open_progress_dialog(size_t message_id, bool show_progress_bar = false);

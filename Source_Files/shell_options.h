@@ -29,6 +29,10 @@ struct ShellOptions {
 	std::vector<std::string> files;
 
 	std::string output;
+
+#ifdef A1_NETWORK_STANDALONE_HUB
+	int standalone_hub_port = 0;
+#endif
 };
 
 extern ShellOptions shell_options;

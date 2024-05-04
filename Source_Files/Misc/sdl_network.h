@@ -91,6 +91,9 @@ std::string NetSessionIdentifier(void);
 
 void NetSetServerIdentifier(short identifier);
 
+/* for giving to NetLookupOpen() as a filter procedure */
+bool NetEntityNotInGame(NetEntityName *entity, NetAddrBlock *address);
+
 /* ---------- prototypes/NETWORK_NAMES.C */
 
 // ZZZ: moved to network_lookup_sdl.h to localize changes.

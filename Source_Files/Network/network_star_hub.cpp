@@ -388,7 +388,7 @@ operator <(const NetAddrBlock& a, const NetAddrBlock& b)
 static OSErr
 send_frame_to_local_spoke(DDPFramePtr frame, NetAddrBlock *address, short protocolType, short port)
 {
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
         sLocalOutgoingBuffer.datagramSize = frame->data_size;
         memcpy(sLocalOutgoingBuffer.datagramData, frame->data, frame->data_size);
         sLocalOutgoingBuffer.protocolType = protocolType;
@@ -463,7 +463,7 @@ hub_initialize(int32 inStartingTick, int inNumPlayers, const NetAddrBlock* const
 	}
 #endif
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 	assert(inLocalPlayerIndex == NONE);
 	sReferencePlayerIndex = NONE;
 #else
@@ -503,7 +503,7 @@ hub_initialize(int32 inStartingTick, int inNumPlayers, const NetAddrBlock* const
 
                 if(inPlayerAddresses[i] != NULL)
                 {
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 					if (sReferencePlayerIndex == NONE) sReferencePlayerIndex = i;
 #endif
                         thePlayer.mConnected = true;
@@ -544,7 +544,7 @@ hub_initialize(int32 inStartingTick, int inNumPlayers, const NetAddrBlock* const
 		sLateFlagsQueues[i].reset(theFirstTick);
         }
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 		if (sReferencePlayerIndex == NONE) sReferencePlayerIndex = 0; //we have no connected players at this point, but just in case
 #endif
         
@@ -1081,7 +1081,7 @@ static bool make_up_flags_for_first_incomplete_tick()
 		return false;
 
 	// never make up flags for ourself
-#ifndef NETWORK_SERVER
+#ifndef A1_NETWORK_STANDALONE_HUB
 	if (getFlagsQueue(sLocalPlayerIndex).getWriteTick() == sSmallestIncompleteTick)
 		return false;
 #endif
@@ -1296,7 +1296,7 @@ make_player_netdead(int inPlayerIndex)
 		sAddressToPlayerIndex.erase(thePlayer.mAddress);
 	}
 
-#if NETWORK_SERVER
+#ifdef A1_NETWORK_STANDALONE_HUB
 	if (sReferencePlayerIndex == inPlayerIndex) //fallback to someone else to be the player of reference
 	{
 		for (size_t i = 0; i < sNetworkPlayers.size(); i++)

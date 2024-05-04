@@ -246,6 +246,7 @@ static const STEAMSHIM_Event *processEvent(const uint8 *buf, size_t buflen)
     PRINTGOTEVENT(SHIMEVENT_GETSTATI);
     PRINTGOTEVENT(SHIMEVENT_SETSTATF);
     PRINTGOTEVENT(SHIMEVENT_GETSTATF);
+    PRINTGOTEVENT(SHIMEVENT_ISOVERLAYACTIVATED);
     #undef PRINTGOTEVENT
     else printf("Child got unknown shimevent %d.\n", (int) type);
     #endif
@@ -257,6 +258,7 @@ static const STEAMSHIM_Event *processEvent(const uint8 *buf, size_t buflen)
 
         case SHIMEVENT_STATSRECEIVED:
         case SHIMEVENT_STATSSTORED:
+        case SHIMEVENT_ISOVERLAYACTIVATED:
             if (!buflen) return NULL;
             event.okay = *(buf++) ? 1 : 0;
             break;

@@ -200,7 +200,7 @@ bool network_gather(bool inResumingGame, bool& outUseRemoteHub)
 
 		if (NetEnter(outUseRemoteHub))
 		{
-			bool gather_dialog_result;
+			bool gather_success = true;
 
 			if (NetGather(&myGameInfo, sizeof(game_info), (void*)&myPlayerInfo,
 				sizeof(myPlayerInfo), inResumingGame, outUpnpPortForward))
@@ -213,7 +213,34 @@ bool network_gather(bool inResumingGame, bool& outUseRemoteHub)
 				{
 					try
 					{
-						metaserverAnnouncer.reset(new GameAvailableMetaserverAnnouncer(myGameInfo));
+						setupAndConnectClient(*gMetaserverClient, outUseRemoteHub);
+						uint16 remote_hub_id = 0;
+
+						if (outUseRemoteHub)
+						{
+							open_progress_dialog(_connecting_to_remote_hub);
+
+							const auto& remote_hubs = gMetaserverClient->get_remoteHubServers();
+
+							for (const auto& remote_hub : remote_hubs)
+							{
+								if (NetConnectRemoteHub(remote_hub.address()))
+								{
+									remote_hub_id = remote_hub.id();
+									break;
+								}
+							}
+
+							if (!remote_hub_id)
+							{
+								alert_user(infoError, strNETWORK_ERRORS, netWarnRemoteHubServerNotAvailable, -1);
+								gather_success = false;
+							}
+
+							close_progress_dialog();
+						}
+
+						if (gather_success) metaserverAnnouncer.reset(new GameAvailableMetaserverAnnouncer(myGameInfo, remote_hub_id));
 					}
 					catch (const MetaserverClient::LoginDeniedException& e)
 					{
@@ -243,22 +270,24 @@ bool network_gather(bool inResumingGame, bool& outUseRemoteHub)
 							sprintf(message, "There was a problem connecting to the server that tracks Internet games (%s). Please try again later.", e.what());
 						}
 
+						gather_success = false;
 						alert_user(message, 0);
 					}
 					catch (const MetaserverClient::ServerConnectException&)
 					{
+						gather_success = false;
 						alert_user(infoError, strNETWORK_ERRORS, netWarnCouldNotAdvertiseOnMetaserver, 0);
 					}
 				}
 
-				gather_dialog_result = (!outUseRemoteHub || NetGameJoin(&myPlayerInfo, sizeof(myPlayerInfo), nullptr)) && GatherDialog::Create(outUseRemoteHub)->GatherNetworkGameByRunning();
+				gather_success = gather_success && (!outUseRemoteHub || NetGameJoin(&myPlayerInfo, sizeof(myPlayerInfo), nullptr)) && GatherDialog::Create(outUseRemoteHub)->GatherNetworkGameByRunning();
 
 			}
 			else {
-				gather_dialog_result = false;
+				gather_success = false;
 			}
 
-			if (gather_dialog_result) {
+			if (gather_success) {
 				NetDoneGathering();
 				if (advertiseOnMetaserver)
 				{
@@ -552,7 +581,7 @@ int network_join(void)
 	show_cursor(); // Hidden one way or another
 	
 	/* If we can enter the network... */
-	if(NetEnter(true))
+	if(NetEnter(false))
 	{
 
 		join_dialog_result = JoinDialog::Create()->JoinNetworkGameByRunning();

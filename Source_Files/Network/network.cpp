@@ -335,6 +335,7 @@ Client::Client(std::shared_ptr<CommunicationsChannel> inChannel) : channel(inCha
 	mChatMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleChatMessage));
 	mChangeColorsMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleChangeColorsMessage));
 	mRemoteHubCommandMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleRemoteHubCommandMessage));
+	mRemoteHubHostRequestMessageHandler.reset(newMessageHandlerMethod(this, &Client::handleRemoteHubHostConnectMessage));
 	mUnexpectedMessageHandler.reset(newMessageHandlerMethod(this, &Client::unexpectedMessageHandler));
 	mDispatcher->setDefaultHandler(mUnexpectedMessageHandler.get());
 	mDispatcher->setHandlerForType(mJoinerInfoMessageHandler.get(), JoinerInfoMessage::kType);
@@ -343,6 +344,7 @@ Client::Client(std::shared_ptr<CommunicationsChannel> inChannel) : channel(inCha
 	mDispatcher->setHandlerForType(mChatMessageHandler.get(), NetworkChatMessage::kType);
 	mDispatcher->setHandlerForType(mChangeColorsMessageHandler.get(), ChangeColorsMessage::kType);
 	mDispatcher->setHandlerForType(mRemoteHubCommandMessageHandler.get(), RemoteHubCommandMessage::kType);
+	mDispatcher->setHandlerForType(mRemoteHubHostRequestMessageHandler.get(), RemoteHubHostConnectMessage::kType);
 	channel->setMessageHandler(mDispatcher.get());
 }
 
@@ -721,6 +723,12 @@ void Client::handleChangeColorsMessage(ChangeColorsMessage *changeColorsMessage,
 	} else if (!can_pregame_chat()) {
 		logAnomaly("unexpected change colors message received (state is %i)", state);
 	}
+}
+
+void Client::handleRemoteHubHostConnectMessage(RemoteHubHostConnectMessage* message, CommunicationsChannel* channel)
+{
+	channel->enqueueOutgoingMessage(RemoteHubHostResponseMessage(false)); // we already have a gatherer using us (the remote hub)
+	state = Client::_disconnect;
 }
 
 void Client::handleRemoteHubCommandMessage(RemoteHubCommandMessage* message, CommunicationsChannel*)
@@ -1336,6 +1344,8 @@ bool NetEnter(bool use_remote_hub)
 		inflater->learnPrototype(GameSessionMessage());
 		inflater->learnPrototype(RemoteHubCommandMessage());
 		inflater->learnPrototype(RemoteHubReadyMessage());
+		inflater->learnPrototype(RemoteHubHostResponseMessage());
+		inflater->learnPrototype(RemoteHubHostConnectMessage());
 	}
   
 	if (!joinDispatcher) {
@@ -1494,11 +1504,9 @@ NetSync()
 bool
 NetUnSync()
 {
-	if (use_remote_hub && connection_to_server)
+	if (use_remote_hub)
 	{
-		RemoteHubCommandMessage message(RemoteHubCommand::kEndGame_Command, dynamic_world->tick_count);
-		connection_to_server->enqueueOutgoingMessage(message);
-		connection_to_server->pumpSendingSide();
+		NetRemoteHubSendCommand(RemoteHubCommand::kEndGame_Command, dynamic_world->tick_count);
 	}
 
 	return sCurrentGameProtocol->UnSync(true, dynamic_world->tick_count);
@@ -1664,20 +1672,7 @@ bool NetGather(
 	netState = netGathering;
 
 	// Start listening for joiners
-	if (use_remote_hub)
-	{
-		open_progress_dialog(_connecting_to_remote_hub);
-
-		if (!NetConnectRemoteHub())
-		{
-			close_progress_dialog();
-			alert_user(infoError, strNETWORK_ERRORS, netWarnRemoteHubServerNotReachable, -1);
-			return false;
-		}
-
-		close_progress_dialog();
-	}
-	else
+	if (!use_remote_hub)
 	{
 		server = new CommunicationsChannelFactory(GAME_PORT);
 
@@ -1692,16 +1687,29 @@ bool NetGather(
 	return true;
 }
 
-bool NetConnectRemoteHub()
+bool NetConnectRemoteHub(const IPaddress& remote_hub_address)
 {
-	/* IP & ports of available remote hub servers should be sent by the metaserver */
 	remote_hub_server = std::make_unique<CommunicationsChannel>();
-	remote_hub_server->connect("192.168.0.30", 4225);
+
+	remote_hub_server->connect(remote_hub_address);
 	if (!remote_hub_server->isConnected()) return false;
 
 	NetSetDefaultInflater(remote_hub_server.get());
-	TopologyMessage topologyMessage(topology);
-	remote_hub_server->enqueueOutgoingMessage(topologyMessage);
+
+	remote_hub_server->enqueueOutgoingMessage(RemoteHubHostConnectMessage(kNetworkSetupProtocolID));
+	remote_hub_server->enqueueOutgoingMessage(CapabilitiesMessage(my_capabilities));
+
+	if (auto response_message = std::unique_ptr<RemoteHubHostResponseMessage>(remote_hub_server->receiveSpecificMessage<RemoteHubHostResponseMessage>(3000u, 3000u)))
+	{
+		if (!response_message->accepted())
+		{
+			remote_hub_server->disconnect();
+		}
+	}
+
+	if (!remote_hub_server->isConnected()) return false;
+
+	remote_hub_server->enqueueOutgoingMessage(TopologyMessage(topology));
 
 	byte* wad = nullptr;
 	int wad_length;
@@ -1727,7 +1735,7 @@ bool NetConnectRemoteHub()
 	else
 		free(wad);
 
-	if (!remote_hub_server->receiveSpecificMessage<RemoteHubReadyMessage>())
+	if (!std::unique_ptr<RemoteHubReadyMessage>(remote_hub_server->receiveSpecificMessage<RemoteHubReadyMessage>()))
 	{
 		remote_hub_server->disconnect();
 		return false;
@@ -1845,7 +1853,7 @@ bool NetGameJoin(
   host_address_specified = (host_addr_string != NULL);
   if (host_address_specified)
     {
-	    uint16 port = 4225;
+	    uint16 port = DEFAULT_GAME_PORT;
 	    std::string host_str = host_addr_string;
 	    std::string::size_type pos = host_str.rfind(':');
 	    if (pos != std::string::npos)
@@ -2898,11 +2906,11 @@ void NetHandleUngatheredPlayer (prospective_joiner_info ungathered_player)
   connections_to_clients.erase(ungathered_player.stream_id);
 }
 
-void NetRemoteHubSendCommand(RemoteHubCommand command, int stream_id)
+void NetRemoteHubSendCommand(RemoteHubCommand command, int data)
 {
 	if (connection_to_server)
 	{
-		auto message = RemoteHubCommandMessage(command, stream_id);
+		auto message = RemoteHubCommandMessage(command, data);
 		connection_to_server->enqueueOutgoingMessage(message);
 		connection_to_server->pumpSendingSide();
 	}

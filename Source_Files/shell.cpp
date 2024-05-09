@@ -719,7 +719,7 @@ static bool StandaloneHubGameInProgress(bool& game_is_done)
 static bool StandaloneHubHostGame(bool& game_has_started)
 {
 	game_has_started = false;
-	bool success = StandaloneHub::Init(shell_options.standalone_hub_port);
+	bool success = StandaloneHub::Init(GAME_PORT);
 
 	if (!success)
 	{

@@ -369,6 +369,19 @@ operator <<(ostream& out, const RoomListMessage& message)
 }
 
 
+bool
+RemoteHubListMessage::reallyInflateFrom(AIStream& inStream)
+{
+	while (inStream.maxg() > inStream.tellg())
+	{
+		RemoteHubServerDescription server;
+		m_servers.push_back(server);
+		m_servers.back().read(inStream);
+	}
+
+	return true;
+}
+
 
 void
 NameAndTeamMessage::reallyDeflateTo(AOStream& out) const
@@ -596,12 +609,10 @@ operator <<(ostream& out, const PlayerListMessage& message)
 
 void
 CreateGameMessage::reallyDeflateTo(AOStream& thePacket) const
-{
-	uint16 orderGame = 0;
-	
+{	
 	thePacket
 		<< m_gamePort
-		<< orderGame
+		<< m_remoteHubId
 		<< m_description;
 }
 

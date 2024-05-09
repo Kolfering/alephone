@@ -26,7 +26,6 @@ Tuesday, June 21, 1994 3:26:46 PM
  May 24, 2003 (Woody Zenfell):
 	compile-time constant MARATHON_NETWORK_VERSION replaced with runtime get_network_version()
 */
-
 #include "cseries.h"
 #include "cstypes.h"
 #include "CommunicationsChannel.h"
@@ -161,7 +160,6 @@ class InGameChatCallbacks : public ChatCallbacks
 };
 
 
-
 // ZZZ note: netPlayerAdded, netChatMessageReceived, and netStartingResumeGame are 'pseudo-states';
 // they are returned from NetUpdateJoinState() but will never be assigned to the actual "NetState()".
 // ghs: netAwaitingHello isn't ever returned or assigned to netState
@@ -197,7 +195,7 @@ void NetSetChatCallbacks(ChatCallbacks *cc);
 bool NetEnter(bool use_remote_hub);
 void NetDoneGathering (void);
 void NetExit(void);
-void NetRemoteHubSendCommand(RemoteHubCommand command, int stream_id = NONE);
+void NetRemoteHubSendCommand(RemoteHubCommand command, int data = NONE);
 bool NetGather(void *game_data, short game_data_size, void *player_data, 
 	short player_data_size, bool resuming_game, bool attempt_upnp);
 
@@ -264,7 +262,7 @@ bool NetSync(void);
 bool NetUnSync(void);
 bool NetStart(void);
 void NetCancelGather(void);
-bool NetConnectRemoteHub();
+bool NetConnectRemoteHub(const IPaddress& remote_hub_address);
 void NetSetResumedGameWadForRemoteHub(byte* wad, int length);
 int32 NetGetNetTime(void);
 

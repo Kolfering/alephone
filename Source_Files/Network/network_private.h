@@ -49,11 +49,7 @@ Feb 27, 2002 (Br'fin (Jeremy Parsons)):
 
 #include <memory>
 
-#ifdef A1_NETWORK_STANDALONE_HUB
-#define GAME_PORT 4225
-#else
 #define	GAME_PORT (network_preferences->game_port)
-#endif
 
 // (ZZZ:) Moved here from sdl_network.h and macintosh_network.h
 
@@ -86,7 +82,7 @@ enum /* error string for user */
 	netErrMetaserverConnectionFailure,
 	netWarnCouldNotAdvertiseOnMetaserver,
 	netWarnUPnPConfigureFailed,
-	netWarnRemoteHubServerNotReachable
+	netWarnRemoteHubServerNotAvailable
 };
 
 // (ZZZ:) Moved here from network.cpp

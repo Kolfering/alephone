@@ -366,5 +366,14 @@ bool RemoteHubCommandMessage::reallyInflateFrom(AIStream& inputStream) {
 	return true;
 }
 
+void RemoteHubHostResponseMessage::reallyDeflateTo(AOStream& outputStream) const {
+	outputStream << (Uint8)mAccepted;
+}
+
+bool RemoteHubHostResponseMessage::reallyInflateFrom(AIStream& inputStream) {
+	inputStream >> (Uint8&)mAccepted;
+	return true;
+}
+
 #endif // !defined(DISABLE_NETWORKING)
 

@@ -4054,6 +4054,10 @@ static void default_network_preferences(network_preferences_data *preferences)
 	preferences->metaserver_colors[1] = get_interface_color(PLAYER_COLOR_BASE_INDEX);
 	preferences->join_metaserver_by_default = false;
 	preferences->allow_stats = false;
+
+#ifdef A1_NETWORK_STANDALONE_HUB
+	preferences->game_port = shell_options.standalone_hub_port;
+#endif
 }
 
 static void default_player_preferences(player_preferences_data *preferences)

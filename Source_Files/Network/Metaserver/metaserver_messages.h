@@ -374,20 +374,26 @@ public:
 	enum { kType = kCLIENT_REMOTEHUBLIST };
 
 	MessageTypeID type() const { return kType; }
+	RemoteHubRequestMessage(const std::string& version) : SmallMessageHelper(), mVersion(version) {}
 
 	RemoteHubRequestMessage* clone() const
 	{
 		return new RemoteHubRequestMessage(*this);
 	}
 
+	std::string version() { return mVersion; }
+
 protected:
-	void reallyDeflateTo(AOStream& out) const {};
+	void reallyDeflateTo(AOStream& out) const;
 
 	bool reallyInflateFrom(AIStream&)
 	{
 		// don't need to be able to receive these
 		return false;
 	}
+
+private:
+	std::string mVersion;
 };
 
 

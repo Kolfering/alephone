@@ -368,6 +368,11 @@ operator <<(ostream& out, const RoomListMessage& message)
 	return out;
 }
 
+void
+RemoteHubRequestMessage::reallyDeflateTo(AOStream& out) const
+{
+	write_string(out, mVersion);
+}
 
 bool
 RemoteHubListMessage::reallyInflateFrom(AIStream& inStream)

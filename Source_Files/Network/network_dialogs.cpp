@@ -392,12 +392,12 @@ void GatherDialog::idle ()
 			case netStartingUp:
 			case netStartingResumeGame:
 				Stop(true);
-				break;
+				return;
 			
 			case netCancelled:
 			case netJoinErrorOccurred:
 				Stop(false);
-				break;
+				return;
 		}
 	}
 	else
@@ -407,13 +407,13 @@ void GatherDialog::idle ()
 			m_ungathered_players[info.stream_id] = info;
 			update_ungathered_widget();
 		}
+	}
 
-		if (m_autogatherWidget->get_value()) {
-			std::map<int, prospective_joiner_info>::iterator it;
-			it = m_ungathered_players.begin();
-			while (it != m_ungathered_players.end() && NetGetNumberOfPlayers() < MAXIMUM_NUMBER_OF_PLAYERS) {
-				gathered_player((it++)->second);
-			}
+	if (m_autogatherWidget->get_value()) {
+		std::map<int, prospective_joiner_info>::iterator it;
+		it = m_ungathered_players.begin();
+		while (it != m_ungathered_players.end() && NetGetNumberOfPlayers() < MAXIMUM_NUMBER_OF_PLAYERS) {
+			gathered_player((it++)->second);
 		}
 	}
 }
@@ -443,6 +443,7 @@ bool GatherDialog::player_search (prospective_joiner_info& player)
 bool GatherDialog::gathered_player (const prospective_joiner_info& player)
 {
 	if (remote_hub_mode) {
+
 		NetRemoteHubSendCommand(RemoteHubCommand::kAcceptJoiner_Command, player.stream_id);
 		auto it = m_ungathered_players.find(player.stream_id);
 
@@ -485,14 +486,8 @@ void GatherDialog::StartGameHit ()
 
 void GatherDialog::JoiningPlayerArrived(const prospective_joiner_info* player)
 {
-	if (m_autogatherWidget->get_value()) {
-		gathered_player(*player);
-	}
-	else
-	{
-		m_ungathered_players[player->stream_id] = *player;
-		update_ungathered_widget();
-	}
+	m_ungathered_players[player->stream_id] = *player;
+	update_ungathered_widget();
 }
 
 void GatherDialog::JoinSucceeded(const prospective_joiner_info* player)

@@ -29,6 +29,7 @@ Tuesday, June 21, 1994 3:26:46 PM
 #include "cseries.h"
 #include "cstypes.h"
 #include "CommunicationsChannel.h"
+#include "network_capabilities.h"
 
 // This file should be used only for stuff that folks outside the network subsystem care about
 // (i.e. it's the interface to the subsystem)
@@ -196,6 +197,7 @@ bool NetEnter(bool use_remote_hub);
 void NetDoneGathering (void);
 void NetExit(void);
 void NetRemoteHubSendCommand(RemoteHubCommand command, int data = NONE);
+void NetSetCapabilities(const Capabilities* capabilities);
 bool NetGather(void *game_data, short game_data_size, void *player_data, 
 	short player_data_size, bool resuming_game, bool attempt_upnp);
 

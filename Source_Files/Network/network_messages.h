@@ -109,7 +109,7 @@ class AcceptJoinMessage : public SmallMessageHelper
   NetPlayer mPlayer = {};
 };
 
-class CapabilitiesMessage : public virtual SmallMessageHelper
+class CapabilitiesMessage : public SmallMessageHelper
 {
  public:
   enum { kType = kCAPABILITIES_MESSAGE };
@@ -213,7 +213,7 @@ protected:
 
 typedef DatalessMessage<kEND_GAME_DATA_MESSAGE> EndGameDataMessage;
 
-class HelloMessage : public virtual SmallMessageHelper
+class HelloMessage : public SmallMessageHelper
 {
 public:
   enum { kType = kHELLO_MESSAGE };

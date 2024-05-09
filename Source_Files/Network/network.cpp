@@ -1758,6 +1758,11 @@ void NetCancelGather(
 	NetDistributeTopology(tagCANCEL_GAME);
 }
 
+void NetSetCapabilities(const Capabilities* capabilities)
+{
+	my_capabilities = *capabilities;
+}
+
 bool NetStart(
 	void)
 {
@@ -2135,6 +2140,9 @@ static void NetInitializeTopology(
 
 	NetLocalAddrBlock(&local_player->dspAddress, GAME_PORT);
 	NetLocalAddrBlock(&local_player->ddpAddress, ddpSocket);
+
+	topology->server.dspAddress = local_player->dspAddress;
+	topology->server.ddpAddress = local_player->ddpAddress;
 
 	if (player_data_size > 0)
 		memcpy(&local_player->player_data, player_data, player_data_size);

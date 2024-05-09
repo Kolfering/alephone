@@ -80,29 +80,30 @@ bool StandaloneHub::GotGatherer()
 	if (can_use_hub)
 	{
 		auto gatherer_capabilities = std::unique_ptr<CapabilitiesMessage>(_gatherer->receiveSpecificMessage<CapabilitiesMessage>(5000u, 5000u));
-		can_use_hub = gatherer_capabilities && CheckGathererCapabilities(gatherer_capabilities->capabilities());
+
+		if (can_use_hub = gatherer_capabilities && CheckGathererCapabilities(gatherer_capabilities->capabilities()))
+		{
+			NetSetCapabilities(gatherer_capabilities->capabilities());
+		}
 	}
 
 	_gatherer->enqueueOutgoingMessage(RemoteHubHostResponseMessage(can_use_hub));
 	_gatherer->pumpSendingSide();
 
-	if (!can_use_hub)
-	{
-		_gatherer.reset();
-		return false;
-	}
+	if (!can_use_hub) _gatherer.reset();
 
-	return true;
+	return can_use_hub;
 }
 
 bool StandaloneHub::CheckGathererCapabilities(const Capabilities* capabilities)
 {
-	return 
-		capabilities->kStarVersion == Capabilities::kStarVersion &&
-		capabilities->kGatherableVersion == Capabilities::kGatherableVersion &&
-		capabilities->kLuaVersion == Capabilities::kLuaVersion &&
-		capabilities->kZippedDataVersion == Capabilities::kZippedDataVersion &&
-		capabilities->kNetworkStatsVersion == Capabilities::kNetworkStatsVersion;
+	auto gatherer_capabilities = *capabilities;
+
+	return
+		gatherer_capabilities[Capabilities::kStar] == Capabilities::kStarVersion &&
+		gatherer_capabilities[Capabilities::kGatherable] == Capabilities::kGatherableVersion &&
+		gatherer_capabilities[Capabilities::kLua] == Capabilities::kLuaVersion &&
+		gatherer_capabilities[Capabilities::kZippedData] == Capabilities::kZippedDataVersion;
 }
 
 bool StandaloneHub::Reset()

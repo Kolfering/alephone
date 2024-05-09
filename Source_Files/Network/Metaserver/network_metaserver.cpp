@@ -361,7 +361,7 @@ MetaserverClient::connect(const std::string& serverName, uint16 port, const std:
 
 		if (use_remote_hub)
 		{
-			m_channel->enqueueOutgoingMessage(RemoteHubRequestMessage());
+			m_channel->enqueueOutgoingMessage(RemoteHubRequestMessage(kNetworkSetupProtocolID));
 			std::unique_ptr<RemoteHubListMessage> theRemoteHubListMessage(m_channel->receiveSpecificMessageOrThrow<RemoteHubListMessage>());
 			m_dispatcher.get()->handle(theRemoteHubListMessage.get(), m_channel.get());
 		}

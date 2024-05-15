@@ -122,8 +122,6 @@ bool StandaloneHub::GatherJoiners()
 
 void StandaloneHub::SendMessageToGatherer(const Message& message)
 {
-	if (_gatherer_client.expired()) return;
-
 	if (auto gatherer = _gatherer_client.lock()) 
 	{
 		gatherer->enqueueOutgoingMessage(message);

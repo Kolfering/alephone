@@ -30,6 +30,7 @@ Tuesday, June 21, 1994 3:26:46 PM
 #include "cstypes.h"
 #include "CommunicationsChannel.h"
 #include "network_capabilities.h"
+#include "Pinger.h"
 
 // This file should be used only for stuff that folks outside the network subsystem care about
 // (i.e. it's the interface to the subsystem)
@@ -229,6 +230,10 @@ void NetCancelJoin(void);
 // usually he'll change your team, if the color's free you'll get that too
 void NetChangeColors(int16 color, int16 team);
 void reassign_player_colors(short player_index, short num_players);
+
+std::weak_ptr<Pinger> NetGetPinger();
+void NetCreatePinger();
+void NetRemovePinger();
 
 // ghs: these are obsolete, I'll get rid of them when I'm sure I won't want
 //      to refer back to them

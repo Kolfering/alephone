@@ -231,7 +231,7 @@ void NetDDPDisposeFrame(DDPFramePtr frame)
  *  Send frame to remote machine
  */
 
-OSErr NetDDPSendFrame(DDPFramePtr frame, NetAddrBlock *address, short protocolType, short port)
+OSErr NetDDPSendFrame(DDPFramePtr frame, const NetAddrBlock *address, short protocolType, short port)
 {
 //fdprintf("NetDDPSendFrame\n");
 	assert(frame->data_size <= ddpMaxData);

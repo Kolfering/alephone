@@ -727,6 +727,9 @@
     <ClCompile Include="..\..\Source_Files\Network\StandaloneHub.cpp">
       <Filter>Network\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source_Files\Network\Pinger.cpp">
+      <Filter>Network\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Source_Files\CSeries\BStream.h">
@@ -1423,6 +1426,9 @@
       <Filter>Misc\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source_Files\Network\StandaloneHub.h">
+      <Filter>Network\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source_Files\Network\Pinger.h">
       <Filter>Network\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -95,7 +95,6 @@ Apr 10, 2003 (Woody Zenfell):
 #include "SoundManager.h"
 #include "progress.h"
 
-
 extern void NetRetargetJoinAttempts(const IPaddress* inAddress);
 
 
@@ -182,6 +181,59 @@ JoinerSeekingGathererAnnouncer::lost_gatherer_callback(const SSLP_ServiceInstanc
  *	Shared Network Gather Dialog Code
  *
  ****************************************************/
+extern int32& hub_get_minimum_send_period();
+
+static uint16 network_gather_remote_hub()
+{
+	uint16 remote_hub_id = 0;
+	open_progress_dialog(_connecting_to_remote_hub);
+
+	const auto& remote_hubs = gMetaserverClient->get_remoteHubServers();
+	std::unordered_map<uint16_t, RemoteHubServerDescription> remote_hubs_pings;
+
+	NetCreatePinger();
+
+	if (auto pinger = NetGetPinger().lock()) //there is a problem if it fails
+	{
+		for (const auto& remote_hub : remote_hubs)
+		{
+			auto identifier = pinger->Register(remote_hub.address());
+			remote_hubs_pings.insert({ identifier, remote_hub });
+		}
+
+		pinger->Ping(4);
+		auto latency_remote_hubs = pinger->GetResponseTime(2000);
+
+		std::multimap<uint16_t, RemoteHubServerDescription> ordered_remote_hubs;
+		for (const auto& [identifier, response_time] : latency_remote_hubs)
+		{
+			ordered_remote_hubs.insert({ response_time, remote_hubs_pings[identifier] });
+		}
+
+		for (const auto& remote_hub_latency : ordered_remote_hubs)
+		{
+			const auto& remote_hub = remote_hub_latency.second;
+			const auto latency = remote_hub_latency.first;
+
+			if (latency > hub_get_minimum_send_period()) continue;
+
+			if (NetConnectRemoteHub(remote_hub.address()))
+			{
+				remote_hub_id = remote_hub.id();
+				break;
+			}
+		}
+	}
+
+	if (!remote_hub_id)
+	{
+		alert_user(infoError, strNETWORK_ERRORS, netWarnRemoteHubServerNotAvailable, -1);
+	}
+
+	NetRemovePinger();
+	close_progress_dialog();
+	return remote_hub_id;
+}
 
 bool network_gather(bool inResumingGame, bool& outUseRemoteHub)
 {
@@ -214,32 +266,8 @@ bool network_gather(bool inResumingGame, bool& outUseRemoteHub)
 					try
 					{
 						setupAndConnectClient(*gMetaserverClient, outUseRemoteHub);
-						uint16 remote_hub_id = 0;
-
-						if (outUseRemoteHub)
-						{
-							open_progress_dialog(_connecting_to_remote_hub);
-
-							const auto& remote_hubs = gMetaserverClient->get_remoteHubServers();
-
-							for (const auto& remote_hub : remote_hubs)
-							{
-								if (NetConnectRemoteHub(remote_hub.address()))
-								{
-									remote_hub_id = remote_hub.id();
-									break;
-								}
-							}
-
-							if (!remote_hub_id)
-							{
-								alert_user(infoError, strNETWORK_ERRORS, netWarnRemoteHubServerNotAvailable, -1);
-								gather_success = false;
-							}
-
-							close_progress_dialog();
-						}
-
+						uint16 remote_hub_id = outUseRemoteHub ? network_gather_remote_hub() : 0;
+						gather_success = !outUseRemoteHub || remote_hub_id;
 						if (gather_success) metaserverAnnouncer.reset(new GameAvailableMetaserverAnnouncer(myGameInfo, remote_hub_id));
 					}
 					catch (const MetaserverClient::LoginDeniedException& e)
@@ -1114,8 +1142,6 @@ SetupNetgameDialog::~SetupNetgameDialog ()
 	delete m_useUpnpWidget;
 	delete m_useRemoteHub;
 }
-
-extern int32& hub_get_minimum_send_period();
 
 bool SetupNetgameDialog::SetupNetworkGameByRunning (
 	player_info *player_information,
@@ -2701,8 +2727,6 @@ public:
 #ifndef HAVE_MINIUPNPC
 		use_upnp_w->set_enabled(false);
 #endif
-
-
 
 		w_select_popup *latency_tolerance_w = new w_select_popup();
 		horizontal_placer *latency_placer = new horizontal_placer(get_theme_space(ITEM_WIDGET));

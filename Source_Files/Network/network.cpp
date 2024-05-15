@@ -200,7 +200,7 @@ static MessageInflater *inflater = NULL;
 static MessageDispatcher *joinDispatcher = NULL;
 static uint32 next_join_attempt;
 static Capabilities my_capabilities;
-
+static std::shared_ptr<Pinger> pinger = nullptr; //multithread safety
 static GatherCallbacks *gatherCallbacks = NULL;
 static ChatCallbacks *chatCallbacks = NULL;
 
@@ -1493,6 +1493,26 @@ NetUnSync()
 	return sCurrentGameProtocol->UnSync(true, dynamic_world->tick_count);
 }
 
+std::weak_ptr<Pinger>
+NetGetPinger()
+{
+	return std::weak_ptr<Pinger>(pinger);
+}
+
+void
+NetCreatePinger()
+{
+	if (!pinger)
+	{
+		pinger = std::make_shared<Pinger>();
+	}
+}
+
+void
+NetRemovePinger()
+{
+	pinger.reset();
+}
 
 
 /* Add a function for a distribution type. returns the type, or NONE if it can't be

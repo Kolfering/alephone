@@ -415,6 +415,7 @@
     <ClCompile Include="..\..\Source_Files\Network\network_star_hub.cpp" />
     <ClCompile Include="..\..\Source_Files\Network\network_star_spoke.cpp" />
     <ClCompile Include="..\..\Source_Files\Network\network_udp.cpp" />
+    <ClCompile Include="..\..\Source_Files\Network\Pinger.cpp" />
     <ClCompile Include="..\..\Source_Files\Network\PortForward.cpp" />
     <ClCompile Include="..\..\Source_Files\Network\RingGameProtocol.cpp" />
     <ClCompile Include="..\..\Source_Files\Network\SDL_netx.cpp" />
@@ -635,6 +636,7 @@
     <ClInclude Include="..\..\Source_Files\Network\network_messages.h" />
     <ClInclude Include="..\..\Source_Files\Network\network_private.h" />
     <ClInclude Include="..\..\Source_Files\Network\network_star.h" />
+    <ClInclude Include="..\..\Source_Files\Network\Pinger.h" />
     <ClInclude Include="..\..\Source_Files\Network\PortForward.h" />
     <ClInclude Include="..\..\Source_Files\Network\RingGameProtocol.h" />
     <ClInclude Include="..\..\Source_Files\Network\SDL_netx.h" />

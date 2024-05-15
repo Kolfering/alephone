@@ -46,7 +46,6 @@
 #include "crc.h"
 #include "player.h"
 #include "InfoTree.h"
-
 #include <map>
 
 extern void make_player_really_net_dead(size_t inPlayerIndex);
@@ -784,10 +783,11 @@ spoke_received_ping_response(AIStream& ps, NetAddrBlock address)
 {
 	uint16 pingIdentifier;
 	ps >> pingIdentifier;
-	
-	// we don't send ping requests, so we don't expect to get one
-	logWarningNMT("Received unexpected ping response packet");
-	
+
+	if (auto pinger = NetGetPinger().lock())
+		pinger->StoreResponse(pingIdentifier);
+	else
+		logWarningNMT("Received unexpected ping response packet");
 } // spoke_received_ping_response()
 
 

@@ -1953,7 +1953,7 @@ bool get_dynamic_data_from_wad(wad_data* wad, dynamic_data* dest)
 {
 	size_t data_length;
 	uint8* data = (uint8*)extract_type_from_wad(wad, DYNAMIC_STRUCTURE_TAG, &data_length);
-	return data && data_length == SIZEOF_dynamic_data ? unpack_dynamic_data(data, dest, 1) : false;
+	return data && data_length == SIZEOF_dynamic_data ? (bool)unpack_dynamic_data(data, dest, 1) : false;
 }
 
 static void allocate_map_structure_for_map(

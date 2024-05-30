@@ -8,8 +8,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Build Standalone Hub Docker image
-      run: docker buildx build -t alephone-standalone-hub . -f Dockerfile.hub --output type=tar,dest=alephone-standalone-hub.tar
+    - name: Build Docker image
+      run: docker buildx build -t alephone:standalone-hub . -f Dockerfile.hub --load
+      
+    - name: Save Docker image
+      run: docker save -o alephone-standalone-hub.tar alephone:standalone-hub
         
     - name: Upload
       uses: actions/upload-artifact@v4

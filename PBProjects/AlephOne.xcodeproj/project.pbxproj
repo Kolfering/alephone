@@ -900,7 +900,6 @@
 		AE1321092C1CB4D2009D34AA /* MusakIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = F5CFAD400200FA6B01D80110 /* MusakIcon.icns */; };
 		AE13210A2C1CB4D2009D34AA /* PhysIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = F5CFAD420200FA6B01D80110 /* PhysIcon.icns */; };
 		AE13210B2C1CB4D2009D34AA /* SaveIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = F5CFAD430200FA6B01D80110 /* SaveIcon.icns */; };
-		AE13210C2C1CB4D2009D34AA /* Marathon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AE0E4EC1141D148F00AAA02F /* Marathon.icns */; };
 		AE13210D2C1CB4D2009D34AA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = AE7A143A141D16D000834C2D /* InfoPlist.strings */; };
 		AE13210F2C1CB4D2009D34AA /* byte_swapping.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F52211410136A66601000001 /* byte_swapping.cpp */; };
 		AE1321102C1CB4D2009D34AA /* csalerts_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F52211430136A66601000001 /* csalerts_sdl.cpp */; };
@@ -1630,6 +1629,7 @@
 		AE8729C82BD1FBF700426095 /* steamshim_parent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AE120B8F2BC76745001873DD /* steamshim_parent.cpp */; };
 		AE8729C92BD1FBFA00426095 /* libsteam_api.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = AE120B942BC77447001873DD /* libsteam_api.dylib */; };
 		AE8729CD2BD1FDAC00426095 /* libsteam_api.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = AE120B942BC77447001873DD /* libsteam_api.dylib */; };
+		AE92786A2C1CD24B0066A326 /* Marathon 2.icns in Resources */ = {isa = PBXBuildFile; fileRef = AE505D20141D47BF00915344 /* Marathon 2.icns */; };
 		AE96370C2A39578600DE43FF /* lua_music.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AE96370B2A39578600DE43FF /* lua_music.cpp */; };
 		AE96370D2A39578600DE43FF /* lua_music.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AE96370B2A39578600DE43FF /* lua_music.cpp */; };
 		AE96370E2A39578600DE43FF /* lua_music.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AE96370B2A39578600DE43FF /* lua_music.cpp */; };
@@ -5794,11 +5794,11 @@
 				AE1321052C1CB4D2009D34AA /* FilmIcon.icns in Resources */,
 				AE1321062C1CB4D2009D34AA /* m1_achievements.lua in Resources */,
 				AE1321072C1CB4D2009D34AA /* MapIcon.icns in Resources */,
+				AE92786A2C1CD24B0066A326 /* Marathon 2.icns in Resources */,
 				AE1321082C1CB4D2009D34AA /* MMLIcon.icns in Resources */,
 				AE1321092C1CB4D2009D34AA /* MusakIcon.icns in Resources */,
 				AE13210A2C1CB4D2009D34AA /* PhysIcon.icns in Resources */,
 				AE13210B2C1CB4D2009D34AA /* SaveIcon.icns in Resources */,
-				AE13210C2C1CB4D2009D34AA /* Marathon.icns in Resources */,
 				AE13210D2C1CB4D2009D34AA /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

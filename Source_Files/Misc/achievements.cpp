@@ -25,7 +25,7 @@ std::string Achievements::get_lua()
 	std::string lua;
 
 #ifdef HAVE_STEAM
-	if (!game_is_networked)
+	if (get_game_controller() == _single_player)
 	{
 		auto map_checksum = get_current_map_checksum();
 		auto physics_checksum = get_physics_file_checksum();

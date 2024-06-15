@@ -33,9 +33,9 @@ public:
     }
 
     void Set(const T& value) {
-        int swappedIndex = index ^ 1;
+        int swappedIndex = index.load() ^ 1;
         structure[swappedIndex] = value;
-        index = swappedIndex;
+        index.store(swappedIndex);
     }
 
     bool Consume(T& returnValue) {

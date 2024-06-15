@@ -4,6 +4,8 @@
 #include "MessageInflater.h"
 #include "network_messages.h"
 
+#define STANDALONE_HUB_VERSION "01.00"
+
 class StandaloneHub {
 private:
 	static StandaloneHub* _instance;

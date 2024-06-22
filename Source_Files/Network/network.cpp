@@ -353,18 +353,6 @@ Client::Client(std::shared_ptr<CommunicationsChannel> inChannel) : channel(inCha
 void Client::drop()
 {
 	int stream_id = getStreamIdFromChannel(channel.get());
-	if (client_chat_info[stream_id]) {
-		ClientInfoMessage clientInfoMessage(stream_id, client_chat_info[stream_id], (int16) ClientInfoMessage::kRemove);
-		client_map_t::iterator it;
-		for (it = connections_to_clients.begin(); it != connections_to_clients.end(); it++) {
-			if (it->second->can_pregame_chat()) {
-				it->second->channel->enqueueOutgoingMessage(clientInfoMessage);
-			}
-		}
-
-		delete client_chat_info[stream_id];
-		client_chat_info.erase(stream_id);
-	}
 
 	if (state == _connected) { // (remove from the list of joinable players)
 		if (gatherCallbacks) {
@@ -373,7 +361,6 @@ void Client::drop()
 			gatherCallbacks->JoiningPlayerDropped(&player);
 		}
 	} else if (state == _awaiting_map) { // need to remove from topo
-		uint16 stream_id = getStreamIdFromChannel(channel.get());
 
 #ifdef A1_NETWORK_STANDALONE_HUB
 		int i = 0;
@@ -395,7 +382,7 @@ void Client::drop()
 
 			if (gatherCallbacks) {
 				prospective_joiner_info player;
-				player.stream_id = getStreamIdFromChannel(channel.get());
+				player.stream_id = stream_id;
 				gatherCallbacks->JoinedPlayerDropped(&player);
 			}
 
@@ -408,7 +395,20 @@ void Client::drop()
 		} else {
 			logAnomaly("a client in state _awaiting_map dropped, but was not found in the topology");
 		}
-	} 
+	}
+
+	if (client_chat_info[stream_id]) { //we want this to be sent after the topology update for remote hubs
+		ClientInfoMessage clientInfoMessage(stream_id, client_chat_info[stream_id], (int16)ClientInfoMessage::kRemove);
+		client_map_t::iterator it;
+		for (it = connections_to_clients.begin(); it != connections_to_clients.end(); it++) {
+			if (it->second->can_pregame_chat()) {
+				it->second->channel->enqueueOutgoingMessage(clientInfoMessage);
+			}
+		}
+
+		delete client_chat_info[stream_id];
+		client_chat_info.erase(stream_id);
+	}
 }
 
 // This serves as a generic M1 check. It doesn't guarantee
@@ -909,12 +909,16 @@ static void handleClientInfoMessage(ClientInfoMessage* clientInfoMessage, Commun
 					joiner_info.color = clientInfoMessage->info()->color;
 					joiner_info.team = clientInfoMessage->info()->team;
 					std::strncpy(joiner_info.name, clientInfoMessage->info()->name.c_str(), clientInfoMessage->info()->name.length());
-					gatherCallbacks->JoiningPlayerDropped(&joiner_info);
-				}
 
-				if (gMetaserverClient && gMetaserverClient->isConnected())
-				{
-					gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
+					if (!gatherCallbacks->JoiningPlayerDropped(&joiner_info)) //we don't really know the joiner state here so we deduce it like this
+					{ 
+						gatherCallbacks->JoinedPlayerDropped(&joiner_info);
+
+						if (gMetaserverClient && gMetaserverClient->isConnected())
+						{
+							gMetaserverClient->announcePlayersInGame(NetGetNumberOfPlayers());
+						}
+					}
 				}
 			}
 

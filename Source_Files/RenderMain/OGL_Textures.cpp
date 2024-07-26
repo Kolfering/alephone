@@ -834,16 +834,18 @@ bool TextureManager::SetupTextureGeometry()
 	case OGL_Txtr_WeaponsInHand:
 	case OGL_Txtr_HUD:
 		{
-			// The 2 here is so that there will be an empty border around a sprite,
-			// so that the texture can be conveniently mipmapped.
-			TxtrWidth = BaseTxtrWidth+2;
-			TxtrHeight = BaseTxtrHeight+2;
-			
-			if (!npotTextures)
+			if (npotTextures) 
 			{
-				TxtrWidth = NextPowerOfTwo(TxtrWidth);
-				TxtrHeight = NextPowerOfTwo(TxtrHeight);
-				
+				TxtrWidth = BaseTxtrWidth;
+				TxtrHeight = BaseTxtrHeight;
+			} 
+			else 
+			{
+				// The 2 here is so that there will be an empty border around a sprite,
+				// so that the texture can be conveniently mipmapped.
+				TxtrWidth = NextPowerOfTwo(BaseTxtrWidth+2);
+				TxtrHeight = NextPowerOfTwo(BaseTxtrHeight+2);
+			
 				// This kludge no longer necessary
 				// Restored due to some people still having AppleGL 1.1.2
 				if (WhetherTextureFix())
@@ -851,19 +853,19 @@ bool TextureManager::SetupTextureGeometry()
 					TxtrWidth = MAX(TxtrWidth,128);
 					TxtrHeight = MAX(TxtrHeight,128);
 				}
+						
+				// Offsets
+				WidthOffset = (TxtrWidth - BaseTxtrWidth) >> 1;
+				HeightOffset = (TxtrHeight - BaseTxtrHeight) >> 1;
+			
+				// We can calculate the scales and offsets here
+				double TWidRecip = 1/double(TxtrWidth);
+				double THtRecip = 1/double(TxtrHeight);
+				U_Scale = TWidRecip*double(BaseTxtrWidth);
+				U_Offset = TWidRecip*WidthOffset;
+				V_Scale = THtRecip*double(BaseTxtrHeight);
+				V_Offset = THtRecip*HeightOffset;
 			}
-			
-			// Offsets
-			WidthOffset = (TxtrWidth - BaseTxtrWidth) >> 1;
-			HeightOffset = (TxtrHeight - BaseTxtrHeight) >> 1;
-			
-			// We can calculate the scales and offsets here
-			double TWidRecip = 1/double(TxtrWidth);
-			double THtRecip = 1/double(TxtrHeight);
-			U_Scale = TWidRecip*double(BaseTxtrWidth);
-			U_Offset = TWidRecip*WidthOffset;
-			V_Scale = THtRecip*double(BaseTxtrHeight);
-			V_Offset = THtRecip*HeightOffset;
 		}
 		break;
 	}

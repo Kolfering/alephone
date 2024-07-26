@@ -263,7 +263,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\Source_Files\;$(ProjectDir)..\..\Source_Files\XML;$(ProjectDir)..\..\Source_Files\TCPMess;$(ProjectDir)..\..\Source_Files\Sound;$(ProjectDir)..\..\Source_Files\RenderOther;$(ProjectDir)..\..\Source_Files\RenderMain;$(ProjectDir)..\..\Source_Files\Network\Metaserver;$(ProjectDir)..\..\Source_Files\Network;$(ProjectDir)..\..\Source_Files\ModelView;$(ProjectDir)..\..\Source_Files\Misc;$(ProjectDir)..\..\Source_Files\Lua;$(ProjectDir)..\..\Source_Files\Input;$(ProjectDir)..\..\Source_Files\GameWorld;$(ProjectDir)..\..\Source_Files\Files;$(ProjectDir)..\..\Source_Files\FFmpeg;$(ProjectDir)..\..\Source_Files\CSeries;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>HAVE_NFD;HAVE_MINIUPNPC;MINIUPNP_STATICLIB;CURL_STATICLIB;HAVE_SDL_IMAGE;HAVE_CURL;HAVE_PNG;HAVE_ZZIP;HAVE_FFMPEG;HAVE_OPENGL;SDL;WIN32;WIN64;__WIN32__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>HAVE_STEAM;HAVE_NFD;HAVE_MINIUPNPC;MINIUPNP_STATICLIB;CURL_STATICLIB;HAVE_SDL_IMAGE;HAVE_CURL;HAVE_PNG;HAVE_ZZIP;HAVE_FFMPEG;HAVE_OPENGL;SDL;WIN32;WIN64;__WIN32__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -425,7 +425,7 @@
     <ClCompile Include="..\..\Source_Files\Misc\sdl_widgets.cpp" />
     <ClCompile Include="..\..\Source_Files\Misc\shared_widgets.cpp" />
     <ClCompile Include="..\..\Source_Files\Misc\Statistics.cpp" />
-    <ClCompile Include="..\..\Source_Files\Misc\steamshim_child.c" />
+    <ClCompile Include="..\..\Source_Files\Misc\steamshim_child.cpp" />
     <ClCompile Include="..\..\Source_Files\Misc\thread_priority_sdl_dummy.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Standalone Hub|Win32'">true</ExcludedFromBuild>

@@ -26,7 +26,7 @@ runs:
         vcpkg_bootstrap_file: bootstrap-vcpkg.bat
         
     - name: Set Image Version
-      run: echo "runner_image_version=$Env:ImageVersion" >> $GITHUB_ENV
+      run: echo "runner_image_version=$Env:ImageVersion" >> $Env:GITHUB_ENV
       shell: pwsh
       
     - name: Cache Vcpkg

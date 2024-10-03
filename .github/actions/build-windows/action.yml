@@ -20,6 +20,10 @@ runs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
       
+    - name: Get Image Version
+      run: echo $Env:ImageVersion
+      shell: pwsh
+      
     - name: Setup Vcpkg
       uses: ./.github/actions/setup-vcpkg
       with:

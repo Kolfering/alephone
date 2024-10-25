@@ -24,8 +24,7 @@ bool StandaloneHub::Init(uint16 port)
 {
 	if (_instance) return true;
 	if (!port) return false;
-	_instance = new StandaloneHub(port);
-	return NetEnter(false);
+	return NetEnter(false) && (_instance = new StandaloneHub(port));
 }
 
 StandaloneHub::StandaloneHub(uint16 port)
@@ -100,7 +99,7 @@ bool StandaloneHub::WaitForGatherer()
 	}
 
 	_gatherer->enqueueOutgoingMessage(RemoteHubHostResponseMessage(can_use_hub));
-	_gatherer->pumpSendingSide();
+	_gatherer->flushOutgoingMessages(false);
 
 	if (!can_use_hub) _gatherer.reset();
 
@@ -143,7 +142,7 @@ void StandaloneHub::SendMessageToGatherer(const Message& message)
 	if (auto gatherer = _gatherer_client.lock()) 
 	{
 		gatherer->enqueueOutgoingMessage(message);
-		gatherer->pumpSendingSide();
+		gatherer->flushOutgoingMessages(false);
 	}
 }
 

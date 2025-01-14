@@ -18,10 +18,6 @@ runs:
       uses: ./.github/actions/setup-vcpkg
       with:
         vcpkg_bootstrap_file: bootstrap-vcpkg.sh
-        
-    - name: Install tools
-      run: brew install nasm
-      shell: bash
       
     - name: Set Image Version
       run: echo "runner_image_version=$ImageVersion" >> $GITHUB_ENV

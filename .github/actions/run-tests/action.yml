@@ -10,7 +10,7 @@ inputs:
 runs:
     using: "composite"
     steps:
-    - name: Checkout submodules
+    - name: Checkout Submodules
       id: checkout
       uses: actions/checkout@v4
       with:
@@ -23,16 +23,16 @@ runs:
       shell: pwsh
       
     - name: Run Marathon Replays
-      if: !cancelled() && steps.checkout.outcome == 'success'
+      if: ${{!cancelled() && steps.checkout.outcome == 'success'}}
       run: ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon" --replay-directory "${{github.workspace}}/tests/replays/Marathon" [Replay]
       shell: pwsh
       
     - name: Run Marathon 2 Replays
-      if: !cancelled() && steps.checkout.outcome == 'success'
+      if: ${{!cancelled() && steps.checkout.outcome == 'success'}}
       run: ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-directory "${{github.workspace}}/tests/replays/Marathon 2" [Replay]
       shell: pwsh
       
     - name: Run Marathon Infinity Replays
-      if: !cancelled() && steps.checkout.outcome == 'success'
+      if: ${{!cancelled() && steps.checkout.outcome == 'success'}}
       run: ./${{inputs.test_application_path}} "${{github.workspace}}/data/Scenarios/Marathon Infinity" --replay-directory "${{github.workspace}}/tests/replays/Marathon Infinity" [Replay]
       shell: pwsh

@@ -10,11 +10,12 @@ inputs:
 runs:
     using: "composite"
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout submodules
+      id: checkout
+      uses: actions/checkout@v4
       with:
         submodules: true
         clean: false
-      id: checkout
       continue-on-error: true
         
     - name: Run Unit Tests

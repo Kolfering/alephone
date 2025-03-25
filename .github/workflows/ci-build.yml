@@ -12,8 +12,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configure
         uses: ./.github/actions/configure-linux
+        with:
+          configure_options: --with-catch2
+          
       - name: Build
         run: make -j $(nproc)
+        
+      - name: Install
+        run: sudo make install
+        
+      - name: Run Tests
+        uses: ./.github/actions/run-tests
+        with:
+          test_application_path: /usr/local/bin/alephone_tests
         
   linux-without-ffmpeg:
     if: github.event_name != 'pull_request' ||
@@ -30,6 +41,14 @@ jobs:
       - name: Build
         run: make -j $(nproc)
         
+      - name: Install
+        run: sudo make install
+        
+      - name: Run Tests
+        uses: ./.github/actions/run-tests
+        with:
+          test_application_path: /usr/local/bin/alephone_tests
+        
   linux-without-opengl:
     if: github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name !=
@@ -40,10 +59,18 @@ jobs:
       - name: Configure
         uses: ./.github/actions/configure-linux
         with:
-          configure_options: --disable-opengl
+          configure_options: --disable-opengl --with-catch2
           
       - name: Build
         run: make -j $(nproc)
+        
+      - name: Install
+        run: sudo make install
+        
+      - name: Run Tests
+        uses: ./.github/actions/run-tests
+        with:
+          test_application_path: /usr/local/bin/alephone_tests
         
   linux-arm64:
     if: github.event_name != 'pull_request' ||
@@ -54,9 +81,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configure
         uses: ./.github/actions/configure-linux
+        with:
+          configure_options: --with-catch2
           
       - name: Build
         run: make -j $(nproc)
+        
+      - name: Install
+        run: sudo make install
+        
+      - name: Run Tests
+        uses: ./.github/actions/run-tests
+        with:
+          test_application_path: /usr/local/bin/alephone_tests
         
   mac-osx-x64:
     if: github.event_name != 'pull_request' ||

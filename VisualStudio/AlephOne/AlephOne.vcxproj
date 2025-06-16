@@ -529,7 +529,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\Source_Files\;$(ProjectDir)..\..\Source_Files\XML;$(ProjectDir)..\..\Source_Files\TCPMess;$(ProjectDir)..\..\Source_Files\Sound;$(ProjectDir)..\..\Source_Files\RenderOther;$(ProjectDir)..\..\Source_Files\RenderMain;$(ProjectDir)..\..\Source_Files\Network\Metaserver;$(ProjectDir)..\..\Source_Files\Network;$(ProjectDir)..\..\Source_Files\ModelView;$(ProjectDir)..\..\Source_Files\Misc;$(ProjectDir)..\..\Source_Files\Lua;$(ProjectDir)..\..\Source_Files\Input;$(ProjectDir)..\..\Source_Files\GameWorld;$(ProjectDir)..\..\Source_Files\Files;$(ProjectDir)..\..\Source_Files\FFmpeg;$(ProjectDir)..\..\Source_Files\CSeries;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2maind.lib;shlwapi.lib;ws2_32.lib;Strmiids.lib;mfuuid.lib;mfplat.lib;imm32.lib;Setupapi.lib;Iphlpapi.lib;Version.lib;winmm.lib;crypt32.lib;Secur32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>

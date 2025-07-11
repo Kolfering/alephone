@@ -210,8 +210,10 @@ static bool launchChild(ProcessType *pid)
     auto app = findExe(boost::regex("Classic Marathon.*\\.app"));
     auto macos = app / "Contents" / "MacOS";
     auto bin = boost::filesystem::directory_iterator(macos)->path().string();
-#else
+#elseif defined(_WIN32)
     auto bin = findExe(boost::regex("Classic Marathon.*"));
+#else
+	auto bin = findExe(boost::regex("alephone"));
 #endif
 
     GArgv[0] = strdup(bin.c_str());

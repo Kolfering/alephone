@@ -1,0 +1,17 @@
+name: release-steam-linux
+
+on: [workflow_dispatch, workflow_call]
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk
+    steps:
+    - name: Check for dockerenv file
+      run: (ls /.dockerenv && echo Found dockerenv) || (echo No dockerenv)
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Vcpkg
+      uses: ./.github/actions/setup-vcpkg
+      with:
+        vcpkg_bootstrap_file: bootstrap-vcpkg.sh

@@ -4,7 +4,9 @@ description: used to setup the environment before using make
 inputs:
  configure_options:
     required: false
-    type: string
+ use_vcpkg:
+    required: false
+    default: false
 
 runs:
     using: "composite"
@@ -13,9 +15,24 @@ runs:
     - run: sudo apt-get update -y 
       shell: bash
       
-    - name: Install Dependencies 
-      run: sudo apt-get install autoconf-archive libboost-all-dev libsdl2-dev libsdl2-image-dev libsdl2-net-dev libsdl2-ttf-dev libzzip-dev libpng-dev libcurl4-gnutls-dev libminiupnpc-dev libsndfile-dev libopenal-dev libglu1-mesa-dev catch2 libvpx-dev libmatroska-dev libebml-dev libvorbis-dev libvorbisenc2 libyuv-dev
+    - name: Define the list of dependencies to install with the distribution package manager even if Vcpkg is used
+      run: echo "apt_dependencies=autoconf-archive libboost-all-dev libsdl2-dev libsdl2-image-dev libsdl2-net-dev libsdl2-ttf-dev libzzip-dev libpng-dev libcurl4-gnutls-dev libminiupnpc-dev libsndfile-dev libopenal-dev libglu1-mesa-dev libvpx-dev libvorbis-dev libvorbisenc2" >> $GITHUB_ENV
       shell: bash
+      
+    - name: Update the list of dependencies with missing dependencies since Vcpkg won't be used
+      if: inputs.use_vcpkg == 'false'
+      run: echo "apt_dependencies=${{env.apt_dependencies}} catch2 libmatroska-dev libebml-dev libyuv-dev" >> $GITHUB_ENV
+      shell: bash
+      
+    - name: Install dependencies with the distribution package manager
+      run: sudo apt-get install -y ${{env.apt_dependencies}}
+      shell: bash
+      
+    - name: Setup Vcpkg
+      if: inputs.use_vcpkg == 'true'
+      uses: ./.github/actions/setup-vcpkg
+      with:
+        vcpkg_bootstrap_file: bootstrap-vcpkg.sh
       
     - name: Configure
       run: autoreconf -i && ./configure ${{inputs.configure_options}}

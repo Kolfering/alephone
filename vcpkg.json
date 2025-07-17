@@ -70,7 +70,8 @@
          "platform": "!linux"
       },
       {
-         "name":"catch2"
+         "name":"catch2",
+         "platform": "!linux"
       },
       {
          "name":"libyuv"

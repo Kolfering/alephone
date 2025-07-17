@@ -453,8 +453,8 @@ void STEAMSHIM_uploadWorkshopItem(const item_upload_data& item)
     if (isDead()) return;
     dbgpipe("Child sending SHIMCMD_UPLOADWORKSHOP.\n");
 
-	std::ostringstream data_stream;
-	data_stream << (uint8)SHIMCMD_WORKSHOP_UPLOAD << item.shim_serialize().str();
+    std::ostringstream data_stream;
+    data_stream << (uint8)SHIMCMD_WORKSHOP_UPLOAD << item.shim_serialize().str();
     
     std::ostringstream data_stream_shim;
 

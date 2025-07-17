@@ -213,7 +213,7 @@ static bool launchChild(ProcessType *pid)
 #elseif defined(_WIN32)
     auto bin = findExe(boost::regex("Classic Marathon.*"));
 #else
-	auto bin = findExe(boost::regex("alephone"));
+    auto bin = findExe(boost::regex("alephone"));
 #endif
 
     GArgv[0] = strdup(bin.c_str());
@@ -545,7 +545,7 @@ static bool writeWorkshopItemOwnedQueriedResult(PipeType fd, const item_owned_qu
 {
     dbgpipe("Parent sending SHIMEVENT_WORKSHOP_QUERY_OWNED_ITEM_RESULT(%d result).\n", query_result.result_code);
 
-	std::ostringstream data_stream;
+    std::ostringstream data_stream;
     data_stream << (uint8)SHIMEVENT_WORKSHOP_QUERY_OWNED_ITEM_RESULT << query_result.shim_serialize().str();
     
     std::ostringstream data_stream_shim;
@@ -562,7 +562,7 @@ static bool writeWorkshopItemQueriedResult(PipeType fd, const item_subscribed_qu
 {
     dbgpipe("Parent sending SHIMEVENT_WORKSHOP_QUERY_SUBSCRIBED_ITEM_RESULT(%d result).\n", query_result.result_code);
 
-	std::ostringstream data_stream;
+    std::ostringstream data_stream;
     data_stream << (uint8)SHIMEVENT_WORKSHOP_QUERY_SUBSCRIBED_ITEM_RESULT << query_result.shim_serialize().str();
 
     std::ostringstream data_stream_shim;
@@ -579,7 +579,7 @@ static bool writeGameInfo(PipeType fd, const steam_game_information& game_info)
 {
     dbgpipe("Parent sending SHIMEVENT_GET_GAME_INFO.\n");
 
-	std::ostringstream data_stream;
+    std::ostringstream data_stream;
     data_stream << (uint8)SHIMEVENT_GET_GAME_INFO << game_info.shim_serialize().str();
 
     std::ostringstream data_stream_shim;

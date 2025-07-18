@@ -41,7 +41,7 @@ runs:
         
     - name: Set vcpkg environment variables
       if: inputs.use_vcpkg == 'true'
-      run: echo "PKG_CONFIG_PATH=/vcpkg/installed-x64-linux/x64-linux/lib/pkgconfig:/vcpkg/installed-x64-linux/x64-linux/share/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+      run: echo "PKG_CONFIG_PATH=$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/lib/pkgconfig:$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/share/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       shell: bash
       
     - name: Restore Vcpkg cache

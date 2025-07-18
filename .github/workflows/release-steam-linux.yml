@@ -15,13 +15,13 @@ jobs:
       with:
         use_vcpkg: true
         configure_options: >
-            --enable-steam --with-boost=/vcpkg/installed-x64-linux/x64-linux
-            CXXFLAGS=-I/vcpkg/installed-x64-linux/x64-linux/include 
-            LDFLAGS=-L/vcpkg/installed-x64-linux/x64-linux/lib 
-            matroska_CFLAGS=-I/vcpkg/installed-x64-linux/x64-linux/include 
-            matroska_LIBS="-L/vcpkg/installed-x64-linux/x64-linux/lib -lmatroska -lebml" 
-            ebml_CFLAGS=-I/vcpkg/installed-x64-linux/x64-linux/include 
-            ebml_LIBS="-L/vcpkg/installed-x64-linux/x64-linux/lib -lebml"
+            --enable-steam --with-boost=$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux
+            CXXFLAGS=-I$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/include 
+            LDFLAGS=-L$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/lib 
+            matroska_CFLAGS=-I$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/include 
+            matroska_LIBS="-L$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/lib -lmatroska -lebml" 
+            ebml_CFLAGS=-I$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/include 
+            ebml_LIBS="-L$GITHUB_WORKSPACE/vcpkg/installed-x64-linux/x64-linux/lib -lebml"
         
     - name: Build
       run: make -j $(nproc)

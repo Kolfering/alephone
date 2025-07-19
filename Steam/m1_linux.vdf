@@ -12,7 +12,7 @@
                 {
                         "FileMapping"
                         {
-                                "LocalPath" "classic_marathon_launcher"
+                                "LocalPath" "Steam/classic_marathon_launcher"
                                 "DepotPath" "."
                         }
 

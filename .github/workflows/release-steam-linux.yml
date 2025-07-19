@@ -25,3 +25,20 @@ jobs:
         
     - name: Build
       run: make -j $(nproc)
+
+    - name: Bootstrap Steamcmd
+      continue-on-error: true #Steamcmd may throw error exit code while bootstrapping that we can ignore, we will see on upload if everything is working fine
+      run: |
+        cp -r "vcpkg/installed-x64-linux/x64-linux/tools/steamworks-sdk" "Steam/steamcmd" &&
+        cd Steam/steamcmd &&
+        chmod +x steamcmd.sh &&
+        chmod +x steamcmd &&
+        ./steamcmd.sh +quit
+
+    - name: Restore config.vdf
+      env:
+        CONFIG_VDF: ${{ secrets.CONFIG_VDF }}
+      run: echo $CONFIG_VDF | base64 --decode > ~/.local/share/Steam/config/config.vdf
+
+    - name: Deploy to Steam
+      run: ./Steam/steamcmd.sh +login alephone_upload +run_app_build ../m1_linux.vdf +quit

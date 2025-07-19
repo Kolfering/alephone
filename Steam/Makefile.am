@@ -8,5 +8,8 @@ endif
 
 classic_marathon_launcher_SOURCES = steamshim_parent.cpp
 
-classic_marathon_launcher_LDADD = -lsteam_api -ldl -Wl,-rpath=.
+classic_marathon_launcher_LDADD = -lsteam_api -ldl
+
+classic_marathon_launcher_LDFLAGS = -Wl,-rpath=.
+
 

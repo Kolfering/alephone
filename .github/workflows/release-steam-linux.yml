@@ -32,7 +32,7 @@ jobs:
         cp -r "vcpkg/installed-x64-linux/x64-linux/tools/steamworks-sdk" "Steam/steamcmd" &&
         cd Steam/steamcmd &&
         chmod +x steamcmd.sh &&
-        chmod +x steamcmd &&
+        chmod +x linux32/steamcmd &&
         ./steamcmd.sh +quit
 
     - name: Restore config.vdf

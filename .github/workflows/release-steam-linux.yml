@@ -38,7 +38,8 @@ jobs:
     - name: Restore config.vdf
       env:
         CONFIG_VDF: ${{ secrets.CONFIG_VDF }}
-      run: echo $CONFIG_VDF | base64 --decode > ~/.local/share/Steam/config/config.vdf
+      run:
+        echo $CONFIG_VDF | base64 --decode > ~/Steam/config/config.vdf
 
     - name: Deploy to Steam
       run: ./Steam/steamcmd.sh +login alephone_upload +run_app_build ../m1_linux.vdf +quit

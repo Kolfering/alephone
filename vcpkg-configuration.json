@@ -1,7 +1,8 @@
 {
   "default-registry": {
-    "kind": "builtin",
-    "baseline": "b91c3336aee7f32412508f7dd351ae2cabdb8819"
+    "kind": "git",
+    "repository": "https://github.com/Kolfering/vcpkg",
+    "baseline": "b57f445c8e1377e87337e258aaf6ae062d7aba7d"
   },
   "registries": [
     {

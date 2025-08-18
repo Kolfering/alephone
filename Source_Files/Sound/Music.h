@@ -72,8 +72,9 @@ public:
 		bool IsFading() const { return music_fade_start; }
 		bool StopPlayerAfterFadeOut() const { return music_fade_stop_no_volume; }
 		void StopFade() { music_fade_start = 0; }
-		bool SetVolume(float volume) { return SetParameters({ volume, parameters.loop }); }
-		bool SetLoop(bool loop) { return SetParameters({ parameters.volume, loop }); }
+		bool SetVolume(float volume) { return SetParameters({ volume, parameters.loop, parameters.tempo }); }
+		bool SetLoop(bool loop) { return SetParameters({ parameters.volume, loop, parameters.tempo }); }
+		bool SetTempo(int tempo) { return SetParameters({ parameters.volume, parameters.loop, tempo }); }
 		const MusicParameters& GetParameters() const { return parameters; }
 		std::pair<bool, float> ComputeFadingVolume() const;
 		std::optional<uint32_t> LoadTrack(FileSpecifier* file);

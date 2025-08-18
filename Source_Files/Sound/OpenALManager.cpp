@@ -19,14 +19,39 @@
 #include "OpenALManager.h"
 #include "Logging.h"
 
-LPALCLOOPBACKOPENDEVICESOFT OpenALManager::alcLoopbackOpenDeviceSOFT;
-LPALCISRENDERFORMATSUPPORTEDSOFT OpenALManager::alcIsRenderFormatSupportedSOFT;
-LPALCRENDERSAMPLESSOFT OpenALManager::alcRenderSamplesSOFT;
-LPALGETSTRINGISOFT OpenALManager::alGetStringiSOFT;
-LPALGENFILTERS OpenALManager::alGenFilters;
-LPALDELETEFILTERS OpenALManager::alDeleteFilters;
-LPALFILTERF OpenALManager::alFilterf;
-LPALFILTERI OpenALManager::alFilteri;
+LPALCLOOPBACKOPENDEVICESOFT alcLoopbackOpenDeviceSOFT;
+LPALCISRENDERFORMATSUPPORTEDSOFT alcIsRenderFormatSupportedSOFT;
+LPALCRENDERSAMPLESSOFT alcRenderSamplesSOFT;
+LPALGENFILTERS alGenFilters;
+LPALDELETEFILTERS alDeleteFilters;
+LPALFILTERF alFilterf;
+LPALFILTERI alFilteri;
+
+/* Effect object functions */
+LPALGENEFFECTS alGenEffects;
+LPALDELETEEFFECTS alDeleteEffects;
+LPALISEFFECT alIsEffect;
+LPALEFFECTI alEffecti;
+LPALEFFECTIV alEffectiv;
+LPALEFFECTF alEffectf;
+LPALEFFECTFV alEffectfv;
+LPALGETEFFECTI alGetEffecti;
+LPALGETEFFECTIV alGetEffectiv;
+LPALGETEFFECTF alGetEffectf;
+LPALGETEFFECTFV alGetEffectfv;
+
+/* Auxiliary Effect Slot object functions */
+LPALGENAUXILIARYEFFECTSLOTS alGenAuxiliaryEffectSlots;
+LPALDELETEAUXILIARYEFFECTSLOTS alDeleteAuxiliaryEffectSlots;
+LPALISAUXILIARYEFFECTSLOT alIsAuxiliaryEffectSlot;
+LPALAUXILIARYEFFECTSLOTI alAuxiliaryEffectSloti;
+LPALAUXILIARYEFFECTSLOTIV alAuxiliaryEffectSlotiv;
+LPALAUXILIARYEFFECTSLOTF alAuxiliaryEffectSlotf;
+LPALAUXILIARYEFFECTSLOTFV alAuxiliaryEffectSlotfv;
+LPALGETAUXILIARYEFFECTSLOTI alGetAuxiliaryEffectSloti;
+LPALGETAUXILIARYEFFECTSLOTIV alGetAuxiliaryEffectSlotiv;
+LPALGETAUXILIARYEFFECTSLOTF alGetAuxiliaryEffectSlotf;
+LPALGETAUXILIARYEFFECTSLOTFV alGetAuxiliaryEffectSlotfv;
 
 OpenALManager* OpenALManager::instance = nullptr;
 
@@ -44,16 +69,7 @@ bool OpenALManager::Init(const AudioParameters& parameters) {
 		}
 	} else {
 		if (alcIsExtensionPresent(NULL, "ALC_SOFT_loopback")) {
-#define LOAD_PROC(T, x)  ((x) = (T)alGetProcAddress(#x))
-			LOAD_PROC(LPALCLOOPBACKOPENDEVICESOFT, alcLoopbackOpenDeviceSOFT);
-			LOAD_PROC(LPALCISRENDERFORMATSUPPORTEDSOFT, alcIsRenderFormatSupportedSOFT);
-			LOAD_PROC(LPALCRENDERSAMPLESSOFT, alcRenderSamplesSOFT);
-			LOAD_PROC(LPALGETSTRINGISOFT, alGetStringiSOFT);
-			LOAD_PROC(LPALGENFILTERS, alGenFilters);
-			LOAD_PROC(LPALDELETEFILTERS, alDeleteFilters);
-			LOAD_PROC(LPALFILTERI, alFilteri);
-			LOAD_PROC(LPALFILTERF, alFilterf);
-#undef LOAD_PROC
+			LoadExtensionFunctions();
 		} else {
 			logError("ALC_SOFT_loopback extension is not supported"); //Should never be the case as long as >= OpenAL 1.14
 			return false;
@@ -62,6 +78,43 @@ bool OpenALManager::Init(const AudioParameters& parameters) {
 
 	instance = new OpenALManager(parameters);
 	return instance->OpenDevice() && instance->LoadOptionalExtensions() && instance->GenerateSources() && instance->GenerateEffects();
+}
+
+void OpenALManager::LoadExtensionFunctions()
+{
+#define LOAD_PROC(T, x)  ((x) = (T)alGetProcAddress(#x))
+	LOAD_PROC(LPALCLOOPBACKOPENDEVICESOFT, alcLoopbackOpenDeviceSOFT);
+	LOAD_PROC(LPALCISRENDERFORMATSUPPORTEDSOFT, alcIsRenderFormatSupportedSOFT);
+	LOAD_PROC(LPALCRENDERSAMPLESSOFT, alcRenderSamplesSOFT);
+	LOAD_PROC(LPALGENFILTERS, alGenFilters);
+	LOAD_PROC(LPALDELETEFILTERS, alDeleteFilters);
+	LOAD_PROC(LPALFILTERI, alFilteri);
+	LOAD_PROC(LPALFILTERF, alFilterf);
+
+	LOAD_PROC(LPALGENEFFECTS, alGenEffects);
+	LOAD_PROC(LPALDELETEEFFECTS, alDeleteEffects);
+	LOAD_PROC(LPALISEFFECT, alIsEffect);
+	LOAD_PROC(LPALEFFECTI, alEffecti);
+	LOAD_PROC(LPALEFFECTIV, alEffectiv);
+	LOAD_PROC(LPALEFFECTF, alEffectf);
+	LOAD_PROC(LPALEFFECTFV, alEffectfv);
+	LOAD_PROC(LPALGETEFFECTI, alGetEffecti);
+	LOAD_PROC(LPALGETEFFECTIV, alGetEffectiv);
+	LOAD_PROC(LPALGETEFFECTF, alGetEffectf);
+	LOAD_PROC(LPALGETEFFECTFV, alGetEffectfv);
+
+	LOAD_PROC(LPALGENAUXILIARYEFFECTSLOTS, alGenAuxiliaryEffectSlots);
+	LOAD_PROC(LPALDELETEAUXILIARYEFFECTSLOTS, alDeleteAuxiliaryEffectSlots);
+	LOAD_PROC(LPALISAUXILIARYEFFECTSLOT, alIsAuxiliaryEffectSlot);
+	LOAD_PROC(LPALAUXILIARYEFFECTSLOTI, alAuxiliaryEffectSloti);
+	LOAD_PROC(LPALAUXILIARYEFFECTSLOTIV, alAuxiliaryEffectSlotiv);
+	LOAD_PROC(LPALAUXILIARYEFFECTSLOTF, alAuxiliaryEffectSlotf);
+	LOAD_PROC(LPALAUXILIARYEFFECTSLOTFV, alAuxiliaryEffectSlotfv);
+	LOAD_PROC(LPALGETAUXILIARYEFFECTSLOTI, alGetAuxiliaryEffectSloti);
+	LOAD_PROC(LPALGETAUXILIARYEFFECTSLOTIV, alGetAuxiliaryEffectSlotiv);
+	LOAD_PROC(LPALGETAUXILIARYEFFECTSLOTF, alGetAuxiliaryEffectSlotf);
+	LOAD_PROC(LPALGETAUXILIARYEFFECTSLOTFV, alGetAuxiliaryEffectSlotfv);
+#undef LOAD_PROC
 }
 
 bool OpenALManager::LoadOptionalExtensions() {
@@ -235,9 +288,23 @@ void OpenALManager::StopAllPlayers() {
 }
 
 void OpenALManager::RetrieveSource(const std::shared_ptr<AudioPlayer>& player) {
+
 	auto audioSource = player->RetrieveSource();
-	if (audioSource) sources_pool.push(std::move(audioSource));
 	player->is_active = false;
+	if (!audioSource) return;
+
+	for (auto effectSlot = effects_registered_sources.begin(); effectSlot != effects_registered_sources.end(); ) {
+
+		if (effectSlot->second.erase(audioSource->source_id) && effectSlot->second.empty()) { //we disable the effect processing if we don't longer have any source using it
+			alAuxiliaryEffectSloti(al_effect_slots[effectSlot->first], AL_EFFECTSLOT_EFFECT, AL_EFFECTSLOT_NULL);
+			effectSlot = effects_registered_sources.erase(effectSlot);
+			continue;
+		}
+
+		effectSlot++;
+	}
+
+	sources_pool.push(std::move(audioSource));
 }
 
 //this is used with the recording device and this allows OpenAL to
@@ -331,17 +398,27 @@ bool OpenALManager::CloseDevice() {
 	return true;
 }
 
+ALuint OpenALManager::UseEffectSlot(EffectType effectType, ALuint forSourceId) {
+	assert(forSourceId);
+	effects_registered_sources[effectType].insert(forSourceId);
+	return al_effect_slots[effectType];
+}
+
 bool OpenALManager::GenerateEffects() {
 	alGenFilters(1, &low_pass_filter);
 	alFilteri(low_pass_filter, AL_FILTER_TYPE, AL_FILTER_LOWPASS);
 	alFilterf(low_pass_filter, AL_LOWPASS_GAIN, 1.f);
 	alFilterf(low_pass_filter, AL_LOWPASS_GAINHF, 1.f);
-	return alGetError() == AL_NO_ERROR;
-}
 
-ALuint OpenALManager::GetLowPassFilter(float highFrequencyGain) const {
-	alFilterf(low_pass_filter, AL_LOWPASS_GAINHF, highFrequencyGain);
-	return low_pass_filter;
+	alGenFilters(1, &silence_filter);
+	alFilteri(silence_filter, AL_FILTER_TYPE, AL_FILTER_LOWPASS);
+	alFilterf(silence_filter, AL_LOWPASS_GAIN, 0.f);
+	alFilterf(silence_filter, AL_LOWPASS_GAINHF, 0.f);
+
+	alGenAuxiliaryEffectSlots(EffectType::NumberOfEffectTypes, al_effect_slots);
+	alGenEffects(EffectType::NumberOfEffectTypes, al_effects);
+	alEffecti(al_effects[EffectType::PitchShifter], AL_EFFECT_TYPE, AL_EFFECT_PITCH_SHIFTER);
+	return alGetError() == AL_NO_ERROR;
 }
 
 bool OpenALManager::GenerateSources() {
@@ -427,6 +504,10 @@ void OpenALManager::CleanEverything() {
 	}
 
 	alDeleteFilters(1, &low_pass_filter);
+	alDeleteFilters(1, &silence_filter);
+	alDeleteEffects(EffectType::NumberOfEffectTypes, al_effects);
+	alDeleteAuxiliaryEffectSlots(EffectType::NumberOfEffectTypes, al_effect_slots);
+
 	bool closedDevice = CloseDevice();
 	assert(closedDevice && "Could not close audio device");
 }

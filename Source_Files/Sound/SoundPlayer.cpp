@@ -360,7 +360,11 @@ SetupALResult SoundPlayer::SetUpALSource3D() {
 	alSourcef(audio_source->source_id, AL_ROLLOFF_FACTOR, finalBehaviorParameters.rolloff_factor);
 	alSourcef(audio_source->source_id, AL_MAX_GAIN, finalBehaviorParameters.max_gain * volume);
 	alSourcef(audio_source->source_id, AL_GAIN, finalBehaviorParameters.max_gain * volume);
-	alSourcei(audio_source->source_id, AL_DIRECT_FILTER, OpenALManager::Get()->GetLowPassFilter(finalBehaviorParameters.high_frequency_gain));
+
+	const auto lowPassFilter = OpenALManager::Get()->GetLowPassFilter();
+	alFilterf(lowPassFilter, AL_LOWPASS_GAINHF, finalBehaviorParameters.high_frequency_gain);
+	alSourcei(audio_source->source_id, AL_DIRECT_FILTER, lowPassFilter);
+
 	return SetupALResult(alGetError() == AL_NO_ERROR, finalBehaviorParameters == behaviorParameters);
 }
 

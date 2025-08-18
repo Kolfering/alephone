@@ -242,7 +242,7 @@ bool Music::LoadLevelMusic()
 {
 	FileSpecifier* level_song_file = GetLevelMusic();
 	auto& slot = music_slots[MusicSlot::Level];
-	return slot.Open(level_song_file) && slot.SetParameters({ 1.f, playlist.size() == 1 });
+	return slot.Open(level_song_file) && slot.SetParameters({ 1.f, playlist.size() == 1, 0 });
 }
 
 void Music::SetPlaylistParameters(bool randomOrder)

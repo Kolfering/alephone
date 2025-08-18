@@ -1149,9 +1149,11 @@ end
 		<argument name="volume"><type>number</type></argument>
 		<argument name="duration" required="false"><type>seconds</type></argument>
 		<argument name="stop_after_fade" required="false"><type>boolean</type></argument>
+		<argument name="fade_type" required="false"><type>music_fade_type</type></argument>
 		<note>it will fade in until volume is reached. volume is decimal [0 - 1]</note>
 		<note>duration unit is seconds and is 1 if not specified</note>
 		<note>stop_after_fade is disabled by default, if set to true if the volume reaches 0 while fading the music will automatically stop</note>
+		<note>fading function, see music fade types for values, default is linear</note>
 	  </function>
 	  <variable name="volume" version="20231125">
 		<description>the volume of the music</description>
@@ -3429,6 +3431,12 @@ end
 		<mnemonic name="split"/>
       </mnemonics>
     </enum>
+	<enum name="music_fade_type">
+      <mnemonics>
+		<mnemonic name="linear"/>
+		<mnemonic name="sinusoidal"/>
+      </mnemonics>
+    </enum>
     <enum name="sound">
       <mnemonics>
 		<mnemonic name="startup"/>
@@ -3723,6 +3731,7 @@ end
     <enum-accessor name="SceneryTypes" contains="scenery_type" nice-name="Scenery"/>
     <enum-accessor name="ScoringModes" contains="scoring_mode" nice-name="Scoring Modes"/>
     <enum-accessor name="SideTypes" contains="side_type" nice-name="Side Types"/>
+	<enum-accessor name="MusicFadeTypes" contains="music_fade_type" nice-name="Music Fade Types"/>
     <enum-accessor name="Sounds" contains="sound" nice-name="Sounds"/>
     <enum-accessor name="TextureTypes" contains="texture_type" nice-name="Texture Types"/>
     <enum-accessor name="TransferModes" contains="transfer_mode" nice-name="Transfer Modes"/>

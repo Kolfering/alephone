@@ -23,6 +23,7 @@
 #include "SoundPlayer.h"
 #include "StreamPlayer.h"
 #include <queue>
+#include <unordered_set>
 
 #if defined (_MSC_VER) && !defined (M_PI)
 #define _USE_MATH_DEFINES
@@ -45,6 +46,40 @@ struct AudioParameters {
 	float music_volume;
 };
 
+extern LPALCLOOPBACKOPENDEVICESOFT alcLoopbackOpenDeviceSOFT;
+extern LPALCISRENDERFORMATSUPPORTEDSOFT alcIsRenderFormatSupportedSOFT;
+extern LPALCRENDERSAMPLESSOFT alcRenderSamplesSOFT;
+extern LPALGENFILTERS alGenFilters;
+extern LPALDELETEFILTERS alDeleteFilters;
+extern LPALFILTERF alFilterf;
+extern LPALFILTERI alFilteri;
+
+/* Effect object functions */
+extern LPALGENEFFECTS alGenEffects;
+extern LPALDELETEEFFECTS alDeleteEffects;
+extern LPALISEFFECT alIsEffect;
+extern LPALEFFECTI alEffecti;
+extern LPALEFFECTIV alEffectiv;
+extern LPALEFFECTF alEffectf;
+extern LPALEFFECTFV alEffectfv;
+extern LPALGETEFFECTI alGetEffecti;
+extern LPALGETEFFECTIV alGetEffectiv;
+extern LPALGETEFFECTF alGetEffectf;
+extern LPALGETEFFECTFV alGetEffectfv;
+
+/* Auxiliary Effect Slot object functions */
+extern LPALGENAUXILIARYEFFECTSLOTS alGenAuxiliaryEffectSlots;
+extern LPALDELETEAUXILIARYEFFECTSLOTS alDeleteAuxiliaryEffectSlots;
+extern LPALISAUXILIARYEFFECTSLOT alIsAuxiliaryEffectSlot;
+extern LPALAUXILIARYEFFECTSLOTI alAuxiliaryEffectSloti;
+extern LPALAUXILIARYEFFECTSLOTIV alAuxiliaryEffectSlotiv;
+extern LPALAUXILIARYEFFECTSLOTF alAuxiliaryEffectSlotf;
+extern LPALAUXILIARYEFFECTSLOTFV alAuxiliaryEffectSlotfv;
+extern LPALGETAUXILIARYEFFECTSLOTI alGetAuxiliaryEffectSloti;
+extern LPALGETAUXILIARYEFFECTSLOTIV alGetAuxiliaryEffectSlotiv;
+extern LPALGETAUXILIARYEFFECTSLOTF alGetAuxiliaryEffectSlotf;
+extern LPALGETAUXILIARYEFFECTSLOTFV alGetAuxiliaryEffectSlotfv;
+
 class OpenALManager {
 public:
 
@@ -59,6 +94,12 @@ public:
 		Supported,
 		Unsupported,
 		Required
+	};
+
+	enum EffectType
+	{
+		PitchShifter,
+		NumberOfEffectTypes
 	};
 
 	static OpenALManager* Get() { return instance; }
@@ -86,8 +127,11 @@ public:
 	bool IsBalanceRewindSound() const { return audio_parameters.balance_rewind; }
 	bool IsPaused() const { return paused_audio; }
 	ALCint GetRenderingFormat() const { return openal_rendering_format; }
-	ALuint GetLowPassFilter(float highFrequencyGain) const;
 	bool IsExtensionSupported(OptionalExtension extension) const { return extension_support.at(extension); }
+	ALuint UseEffectSlot(EffectType effectType, ALuint forSourceId);
+	ALuint GetEffect(EffectType effectType) const { return al_effects[effectType]; }
+	ALuint GetSilenceFilter() const { return silence_filter; }
+	ALuint GetLowPassFilter() const { return low_pass_filter; }
 private:
 	static OpenALManager* instance;
 	ALCdevice* p_ALCDevice = nullptr;
@@ -117,27 +161,21 @@ private:
 	int GetBestOpenALSupportedFormat();
 	void RetrieveSource(const std::shared_ptr<AudioPlayer>& player);
 
-	/* Loopback device functions */
-	static LPALCLOOPBACKOPENDEVICESOFT alcLoopbackOpenDeviceSOFT;
-	static LPALCISRENDERFORMATSUPPORTEDSOFT alcIsRenderFormatSupportedSOFT;
-	static LPALCRENDERSAMPLESSOFT alcRenderSamplesSOFT;
-
-	static LPALGETSTRINGISOFT alGetStringiSOFT;
-
-	/* Filter object functions */
-	static LPALGENFILTERS alGenFilters;
-	static LPALDELETEFILTERS alDeleteFilters;
-	static LPALFILTERI alFilteri;
-	static LPALFILTERF alFilterf;
-
 	std::unordered_map<OptionalExtension, bool> extension_support;
 	bool LoadOptionalExtensions();
 
+	static void LoadExtensionFunctions();
 	static void MixerCallback(void* usr, uint8* stream, int len);
 	SDL_AudioSpec sdl_audio_specs_obtained;
 	AudioParameters audio_parameters;
 	ALCint openal_rendering_format = 0;
+
 	ALuint low_pass_filter;
+	ALuint al_effects[EffectType::NumberOfEffectTypes];
+	ALuint al_effect_slots[EffectType::NumberOfEffectTypes];
+	ALuint silence_filter;
+
+	std::unordered_map<EffectType, std::unordered_set<ALuint>> effects_registered_sources;
 
 	/* format type we supports for mixing / rendering
 	* those are used from the first to the last of the list

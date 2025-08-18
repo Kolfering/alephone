@@ -35,8 +35,28 @@ MusicPlayer::MusicPlayer(std::vector<Preset>& presets, uint32_t starting_preset_
 
 SetupALResult MusicPlayer::SetUpALSourceIdle() {
 	const float default_music_volume = OpenALManager::Get()->GetMusicVolume() * OpenALManager::Get()->GetMasterVolume();
+	const auto& music_parameters = parameters.Get();
+
 	alSourcef(audio_source->source_id, AL_MAX_GAIN, default_music_volume);
-	alSourcef(audio_source->source_id, AL_GAIN, default_music_volume * parameters.Get().volume);
+	alSourcef(audio_source->source_id, AL_GAIN, default_music_volume * music_parameters.volume);
+
+	const auto tempo = std::clamp(music_parameters.tempo, -12, 12);
+
+	if (tempo != current_tempo) { //let's not use an effect slot if not needed
+		const auto pitchShifterEffect = OpenALManager::Get()->GetEffect(OpenALManager::EffectType::PitchShifter);
+
+		const float pitch = std::pow(2, tempo / 12.f);
+		alSourcef(audio_source->source_id, AL_PITCH, pitch);
+
+		const auto pitchShifterEffectSlot = OpenALManager::Get()->UseEffectSlot(OpenALManager::EffectType::PitchShifter, audio_source->source_id);
+		alEffecti(pitchShifterEffect, AL_PITCH_SHIFTER_COARSE_TUNE, -tempo);
+		alAuxiliaryEffectSloti(pitchShifterEffectSlot, AL_EFFECTSLOT_EFFECT, pitchShifterEffect);
+
+		alSource3i(audio_source->source_id, AL_AUXILIARY_SEND_FILTER, pitchShifterEffectSlot, 0, 0);
+		alSourcei(audio_source->source_id, AL_DIRECT_FILTER, OpenALManager::Get()->GetSilenceFilter());
+		current_tempo = tempo;
+	}
+
 	return SetupALResult(alGetError() == AL_NO_ERROR, true);
 }
 

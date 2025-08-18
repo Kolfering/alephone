@@ -24,6 +24,7 @@
 struct MusicParameters {
 	float volume = 1.f;
 	bool loop = true;
+	int tempo = 0;
 };
 
 class MusicPlayer : public AudioPlayer {
@@ -65,6 +66,7 @@ private:
 	uint32_t current_preset_index;
 	uint32_t current_segment_index;
 	std::atomic_uint32_t requested_preset_index;
+	int current_tempo = 0;
 
 	friend class OpenALManager;
 };

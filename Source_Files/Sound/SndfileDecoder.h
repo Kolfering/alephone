@@ -40,6 +40,9 @@ public:
 	int BytesPerFrame() { return 4 * (IsStereo() ? 2 : 1); }
 	float Rate() { return (float) sfinfo.samplerate; }
 	bool IsLittleEndian() { return PlatformIsLittleEndian(); }
+	float Duration() { return Frames() / Rate(); }
+	uint32_t Position();
+	uint32_t Size() { return Frames() * BytesPerFrame(); }
 
 	int32 Frames() { return sfinfo.frames; }
 

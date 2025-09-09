@@ -43,6 +43,9 @@ public:
 	virtual int BytesPerFrame() = 0;
 	virtual float Rate() = 0;
 	virtual bool IsLittleEndian() = 0;
+	virtual float Duration() = 0;
+	virtual uint32_t Position() = 0;
+	virtual uint32_t Size() = 0;
 
 	StreamDecoder() { }
 	virtual ~StreamDecoder() { }
@@ -57,7 +60,7 @@ public:
 	~Decoder() { }
 
 	// total number of frames in the file
-	virtual int32 Frames() = 0; 
+	virtual int32 Frames() = 0;
 
 	static Decoder* Get(FileSpecifier &File); // can return 0
 };

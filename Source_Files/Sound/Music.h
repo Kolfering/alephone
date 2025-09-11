@@ -43,25 +43,20 @@ public:
 		Level = 1
 	};
 
-	enum class FadeType {
-		Linear,
-		Sinusoidal
-	};
-
 	class Slot {
 	private:
 		std::shared_ptr<MusicPlayer> musicPlayer;
-		std::vector<MusicPlayer::Segment> dynamic_music_tracks;
+		std::vector<std::shared_ptr<StreamDecoder>> dynamic_music_tracks;
 		std::vector<MusicPlayer::Preset> dynamic_music_presets;
 		uint64_t music_fade_start = 0;
 		uint32_t music_fade_duration = 0;
 		float music_fade_limit_volume;
 		float music_fade_start_volume;
 		bool music_fade_stop_no_volume;
-		FadeType music_fade_type;
+		MusicPlayer::FadeType music_fade_type;
 		MusicParameters parameters;
 	public:
-		void Fade(float limitVolume, short duration, FadeType fadeType, bool stopOnNoVolume = true);
+		void Fade(float limitVolume, short duration, MusicPlayer::FadeType fadeType, bool stopOnNoVolume = true);
 		bool Playing() const { return musicPlayer && musicPlayer->IsActive(); }
 		void Pause();
 		void Close();
@@ -79,15 +74,16 @@ public:
 		std::optional<uint32_t> LoadTrack(FileSpecifier* file);
 		std::optional<uint32_t> AddPreset();
 		std::optional<uint32_t> AddSegmentToPreset(uint32_t preset_index, uint32_t track_index);
+		std::pair<uint32_t, uint32_t> GetCurrentSegment() const { return musicPlayer->GetCurrentSegment(); }
 		bool IsSegmentIndexValid(uint32_t preset_index, uint32_t segment_index) const;
-		bool SetNextSegment(uint32_t preset_index, uint32_t segment_index, uint32_t transition_preset_index, uint32_t transition_segment_index);
+		bool SetSegmentMapping(uint32_t preset_index, uint32_t segment_index, uint32_t transition_preset_index, const MusicPlayer::Segment::Mapping& transition_segment_mapping);
 		bool SetPresetTransition(uint32_t preset_index);
 	};
 
 	bool SetupIntroMusic(FileSpecifier& file) { return music_slots[MusicSlot::Intro].Open(&file); }
 	void RestartIntroMusic();
 	Slot* GetSlot(uint32_t index) { return index < music_slots.size() ? &music_slots[index] : nullptr; }
-	void Fade(float limitVolume, short duration, FadeType fadeType, bool stopOnNoVolume = true);
+	void Fade(float limitVolume, short duration, MusicPlayer::FadeType fadeType, bool stopOnNoVolume = true);
 	void Pause();
 	bool Playing();
 	std::optional<uint32_t> Add(const MusicParameters& parameters, FileSpecifier* file = nullptr);

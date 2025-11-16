@@ -3864,7 +3864,7 @@ int Lua_Map_register(lua_State *L)
 	// register one Level userdatum globally
 	Lua_Level::Push(L, 0);
 	lua_setglobal(L, Lua_Level_Name);
-
+	f
 	compatibility(L);
 	return 0;
 }

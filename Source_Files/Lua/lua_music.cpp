@@ -81,7 +81,9 @@ static int Lua_Music_Volume_Set(lua_State* L)
 	auto slot = Music::instance()->GetSlot(index);
 	if (!slot) return luaL_error(L, "index: out of bounds");
 
-	slot->SetVolume(static_cast<float>(lua_tonumber(L, 2)));
+	if (!slot->SetVolume(static_cast<float>(lua_tonumber(L, 2))))
+		return luaL_error(L, "volume: could not updated volume");
+
 	return 0;
 }
 

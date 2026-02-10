@@ -20,23 +20,27 @@ runs:
         
     - name: Run Unit Tests
       run: |
-        &"${{inputs.test_application_path}}" --allow-running-no-tests ~[Replay]
+        $Binary = "${{inputs.test_application_path}}"
+        &"$Binary" --allow-running-no-tests ~[Replay]
       shell: pwsh
       
     - name: Run Marathon Replays
       if: ${{!cancelled() && steps.checkout.outcome == 'success'}}
       run: |
-        &"${{inputs.test_application_path}}" "${{github.workspace}}/data/Scenarios/Marathon" --replay-directory "${{github.workspace}}/tests/replays/Marathon" [Replay]
+        $Binary = "${{inputs.test_application_path}}"
+        &"$Binary" "${{github.workspace}}/data/Scenarios/Marathon" --replay-directory "${{github.workspace}}/tests/replays/Marathon" [Replay]
       shell: pwsh
       
     - name: Run Marathon 2 Replays
       if: ${{!cancelled() && steps.checkout.outcome == 'success'}}
       run: |
-        &"${{inputs.test_application_path}}" "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-directory "${{github.workspace}}/tests/replays/Marathon 2" [Replay]
+        $Binary = "${{inputs.test_application_path}}"
+        &"$Binary" "${{github.workspace}}/data/Scenarios/Marathon 2" --replay-directory "${{github.workspace}}/tests/replays/Marathon 2" [Replay]
       shell: pwsh
       
     - name: Run Marathon Infinity Replays
       if: ${{!cancelled() && steps.checkout.outcome == 'success'}}
       run: |
-        &"${{inputs.test_application_path}}" "${{github.workspace}}/data/Scenarios/Marathon Infinity" --replay-directory "${{github.workspace}}/tests/replays/Marathon Infinity" [Replay]
+        $Binary = "${{inputs.test_application_path}}"
+        &"$Binary" "${{github.workspace}}/data/Scenarios/Marathon Infinity" --replay-directory "${{github.workspace}}/tests/replays/Marathon Infinity" [Replay]
       shell: pwsh

@@ -78,7 +78,11 @@ jobs:
         uses: ./.github/actions/build-mac-osx
         with:
           xcode_arch: x86_64
-          xcode_targets: "Aleph One"
+          xcode_targets: "Aleph One, Aleph One Tests"
+      - name: Run Tests
+        uses: ./.github/actions/run-tests
+        with:
+          test_application_path: "/Xcode/build/Release/AlephOne Tests.app"
           
   mac-osx-arm:
     if: github.event_name != 'pull_request' ||
@@ -91,7 +95,11 @@ jobs:
         uses: ./.github/actions/build-mac-osx
         with:
           xcode_arch: arm64
-          xcode_targets: "Aleph One"
+          xcode_targets: "Aleph One, Aleph One Tests"
+      - name: Run Tests
+        uses: ./.github/actions/run-tests
+        with:
+          test_application_path: "/Xcode/build/Release/AlephOne Tests.app"
           
   windows-x64:
     if: github.event_name != 'pull_request' ||

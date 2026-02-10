@@ -82,7 +82,7 @@ jobs:
       - name: Run Tests
         uses: ./.github/actions/run-tests
         with:
-          test_application_path: "/Xcode/build/Release/AlephOne Tests.app/Contents/MacOS/AlephOne Tests"
+          test_application_path: "/Xcode/build/Release/AlephOne Tests.app/Contents/MacOS/Aleph One Tests"
           
   mac-osx-arm:
     if: github.event_name != 'pull_request' ||
@@ -99,7 +99,7 @@ jobs:
       - name: Run Tests
         uses: ./.github/actions/run-tests
         with:
-          test_application_path: "/Xcode/build/Release/AlephOne Tests.app/Contents/MacOS/AlephOne Tests"
+          test_application_path: "/Xcode/build/Release/AlephOne Tests.app/Contents/MacOS/Aleph One Tests"
           
   windows-x64:
     if: github.event_name != 'pull_request' ||

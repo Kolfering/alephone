@@ -24,7 +24,7 @@ jobs:
       - name: Run Tests
         uses: ./.github/actions/run-tests
         with:
-          test_application_path: /usr/local/bin/alephone_tests
+          test_application_path: "/usr/local/bin/alephone_tests"
           
   linux-standalone-hub:
     if: github.event_name != 'pull_request' ||
@@ -65,7 +65,7 @@ jobs:
       - name: Run Tests
         uses: ./.github/actions/run-tests
         with:
-          test_application_path: /usr/local/bin/alephone_tests
+          test_application_path: "/usr/local/bin/alephone_tests"
         
   mac-osx-x64:
     if: github.event_name != 'pull_request' ||
@@ -83,6 +83,9 @@ jobs:
         uses: ./.github/actions/run-tests
         with:
           test_application_path: "Xcode/build/Release/AlephOne Tests.app/Contents/MacOS/AlephOne Tests"
+          test_application_parameters: "--nogl"
+        env:
+          SDL_VIDEODRIVER: dummy
           
   mac-osx-arm:
     if: github.event_name != 'pull_request' ||
@@ -100,6 +103,9 @@ jobs:
         uses: ./.github/actions/run-tests
         with:
           test_application_path: "Xcode/build/Release/AlephOne Tests.app/Contents/MacOS/AlephOne Tests"
+          test_application_parameters: "--nogl"
+        env:
+          SDL_VIDEODRIVER: dummy
           
   windows-x64:
     if: github.event_name != 'pull_request' ||
@@ -117,7 +123,8 @@ jobs:
       - name: Run Tests
         uses: ./.github/actions/run-tests
         with:
-          test_application_path: VisualStudio/x64/Release/Tests.exe
+          test_application_path: "VisualStudio/x64/Release/Tests.exe"
+          test_application_parameters: "--nogl"
           
   windows-x86:
     if: github.event_name != 'pull_request' ||
@@ -135,4 +142,5 @@ jobs:
       - name: Run Tests
         uses: ./.github/actions/run-tests
         with:
-          test_application_path: VisualStudio/Release/Tests.exe
+          test_application_path: "VisualStudio/Release/Tests.exe"
+          test_application_parameters: "--nogl"

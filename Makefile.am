@@ -6,8 +6,6 @@ SUBDIRS = Source_Files Steam tools data
 # Requires automake 1.5
 AUTOMAKE_OPTIONS = 1.5 foreign dist-bzip2 no-dist-gzip
 
-# EES: TODO: This is fragile. Better to use a list of known directories and
-# consistent file names so this manifest can be built automatically using grep:
 EXTRA_DIST = \
 	data/AlephSansMono-Bold.ttf                                                 \
 	data/AlephSansMonoLicense.txt                                               \

@@ -25,6 +25,7 @@ jobs:
         with:
           languages: cpp
           queries: security-and-quality
+          build-mode: manual
 
       - name: Build
         run: make -j $(nproc)

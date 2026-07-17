@@ -20,7 +20,9 @@ runs:
         vcpkg_bootstrap_file: bootstrap-vcpkg.sh
         
     - name: Install tools
-      run: brew install nasm
+      run: |
+        brew untap aws/tap
+        brew install nasm
       shell: bash
       
     - name: Set Image Version

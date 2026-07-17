@@ -36,9 +36,7 @@ int main(int argc, char** argv)
 	shell_options.parse(argc, argv);
 
 	auto code = 0;
-/*
 	try {
-*/
 		// Initialize everything
 		initialize_application();
 
@@ -52,7 +50,6 @@ int main(int argc, char** argv)
 
 		// Run the main loop
 		main_event_loop();
-/*
 	}
 	catch (std::exception& e) {
 		try
@@ -83,6 +80,5 @@ int main(int argc, char** argv)
 	{
 
 	}
-*/
 	return code;
 }

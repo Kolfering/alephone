@@ -61,6 +61,11 @@
          "name":"nativefiledialog-extended"
       },
       {
+         "name":"dbus",
+         "platform": "linux",
+         "default-features": false
+      },
+      {
          "name":"libsndfile"
       },
       {

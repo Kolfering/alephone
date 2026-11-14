@@ -61,12 +61,8 @@
          "name":"nativefiledialog-extended"
       },
       {
-         "name":"dbus",
-         "platform": "linux",
-         "default-features": false
-      },
-      {
-         "name":"libsndfile"
+         "name":"libsndfile",
+         "platform": "!linux"
       },
       {
          "name":"openal-soft",
